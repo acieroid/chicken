@@ -1,0 +1,71 @@
+;;; -*- Mode: LISP; slime-proxy-proxy-connection: t -*-
+(in-package :ps)
+
+(defvar *canvas*)
+(defvar *context*)
+
+(defun first (l)
+  (elt l 0))
+(defun second (l)
+  (elt l 1))
+
+(defun assoc (val list)
+  ((@ list reduce)
+   (lambda (last x)
+     (if (and (not last) (= (first x) val))
+         (second x)
+         last))
+   nil))
+
+;; Maps
+(defvar +colors+
+  '((:grass "#180")
+    (:mud "#531")
+    (:water "47F")))
+(defvar +tile-size+ 30)
+
+(defun tile-color (tile)
+  (assoc tile +colors+))
+
+(defun random-tile ()
+  (first (elt +colors+ (random (@ +colors+ length)))))
+
+(defun make-map (w h)
+  (let ((contents (make-array)))
+    (dotimes (x w)
+      (setf (aref contents x) (make-array))
+      (dotimes (y h)
+        (setf (aref contents x y) (random-tile))))
+    (create type "map" :contents contents :width w :height h)))
+
+(defun draw-map (map)
+  (dotimes (x (@ map width))
+    (dotimes (y (@ map height))
+      (setf (@ *context* fill-style) (tile-color
+                                      (aref (@ map contents) x y)))
+      ((@ *context* fill-rect)
+       (* x +tile-size+) (* y +tile-size+)
+       (+ (* x +tile-size+) +tile-size+)
+       (+ (* y +tile-size+) +tile-size+))
+      (setf (@ *context* stroke-style) "#000")
+      ((@ *context* begin-path))
+      ((@ *context* move-to) (* x +tile-size+) (* y +tile-size+))
+      ((@ *context* line-to) (* x +tile-size+) (+ (* y +tile-size+) +tile-size+))
+      ((@ *context* line-to) (+ (* x +tile-size+) +tile-size+) (+ (* y +tile-size+) +tile-size+))
+      ((@ *context* line-to) (+ (* x +tile-size+) +tile-size+) (* y +tile-size+))
+      ((@ *context* line-to) (* x +tile-size+) (* y +tile-size+))
+      ((@ *context* stroke))
+      ))
+  )
+
+(defun clear ()
+  ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height))))
+
+(defun init ()
+  (setq *canvas* ($ "#canvas"))
+  (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
+  (clear)
+  ((@ ($ "#content") html) "<input type=\"button\" id=\"drawMap\" value=\"Draw a new map\"/>")
+  ((@ ($ "#drawMap") click) (lambda () (draw-map (make-map (/ ((@ *canvas* width)) +tile-size+)
+                                                           (/ ((@ *canvas* height)) +tile-size+))))))
+
