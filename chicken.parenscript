@@ -4,6 +4,7 @@
 ;;; Variables and constants
 (defvar *canvas*)
 (defvar *context*)
+(defvar *map*)
 
 (defvar +colors+
   '((:grass "#180")
@@ -25,6 +26,16 @@
          last))
    nil))
 
+(defun mapcar (fun &rest as)
+  (let ((result-array (make-array)))
+    (if (= 1 (length as))
+        (dolist (element (aref as 0))
+          (result-array.push (fun element)))
+        (dotimes (i (length (aref as 0)))
+          (let ((args-array (mapcar (lambda (a) (return (aref a i))) as)))
+            (result-array.push (fun.apply fun args-array)))))
+    (return result-array)))
+
 ;;; Maps
 (defun tile-color (tile)
   (assoc tile +colors+))
@@ -38,34 +49,53 @@
   (first (elt +colors+ (random (@ +colors+ length)))))
 
 (defun make-map (w h)
-  (let ((contents (make-array)))
+  (let ((contents (make-array))
+        (owned (make-array)))
     (dotimes (x w)
       (setf (aref contents x) (make-array))
+      (setf (aref owned x) (make-array))
       (dotimes (y h)
-        (setf (aref contents x y) (random-tile))))
-    (create type "map" :contents contents :width w :height h)))
+        (setf (aref contents x y) (random-tile))
+        (setf (aref owned x y) nil)))
+    (create type "map"
+            :width w :height h
+            :contents contents :owned owned)))
 
-(defun draw-map (map)
+(defun new-map ()
+  (make-map (/ ((@ *canvas* width)) +tile-size+)
+            (/ ((@ *canvas* height)) +tile-size+)))
+
+(defun draw-tile (x y type owned-p)
+  (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
+         (top (* y +tile-size+)) (bottom (+ top +tile-size+)))
+    (setf (@ *context* fill-style) (tile-color type))
+    ((@ *context* fill-rect) left top right bottom)
+    (when owned-p
+      (setf (@ *context* stroke-style) "#F00")
+      ((@ *context* begin-path))
+      ((@ *context* move-to) left top)
+      (mapcar (lambda (x y) ((@ *context* line-to) x y))
+              (list left right right left left)
+              (list top top bottom bottom top))
+      ((@ *context* stroke)))))
+
+(defun map-foreach (f map)
   (dotimes (x (@ map width))
     (dotimes (y (@ map height))
-      (setf (@ *context* fill-style) (tile-color
-                                      (aref (@ map contents) x y)))
-      ((@ *context* fill-rect)
-       (* x +tile-size+) (* y +tile-size+)
-       (+ (* x +tile-size+) +tile-size+)
-       (+ (* y +tile-size+) +tile-size+))
-      (setf (@ *context* stroke-style) "#000")
-      ((@ *context* begin-path))
-      ((@ *context* move-to) (* x +tile-size+) (* y +tile-size+))
-      ((@ *context* line-to) (* x +tile-size+) (+ (* y +tile-size+) +tile-size+))
-      ((@ *context* line-to) (+ (* x +tile-size+) +tile-size+) (+ (* y +tile-size+) +tile-size+))
-      ((@ *context* line-to) (+ (* x +tile-size+) +tile-size+) (* y +tile-size+))
-      ((@ *context* line-to) (* x +tile-size+) (* y +tile-size+))
-      ((@ *context* stroke))
-      )))
+      (f x y))))
+
+(defun draw-map (map)
+  (let ((borders-func (make-array)))
+    (map-foreach (lambda (x y)
+                   (draw-tile x y
+                              (aref (@ map contents) x y)
+                              (aref (@ map owned) x y)))
+                 map)))
 
 (defun handle-click (x y)
-  (alert (stringify x ", " y)))
+  (setf (aref (@ *map* owned) x y) t)
+  (clear)
+  (draw-map *map*))
 
 (defun clear ()
   ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height))))
@@ -75,13 +105,12 @@
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (clear)
   ((@ ($ "#content") html)
-   "<input type=\"button\" id=\"drawMap\" value=\"Draw a new map\"/>")
-  ((@ ($ "#drawMap") click)
-   (lambda () (draw-map (make-map (/ ((@ *canvas* width)) +tile-size+)
-                                  (/ ((@ *canvas* height)) +tile-size+)))))
+   "<input type=\"button\" id=\"new\" value=\"New game\"/>")
+  ((@ ($ "#new") click) (lambda () (setq *map* (new-map)) (draw-map *map*)))
   ((@ *canvas* click)
    (lambda (e)
-     (handle-click (tile-position (- (@ e page-x) (@ this offset-left)))
-                   (tile-position (- (@ e page-y) (@ this offset-top)))))))
+     (handle-click
+      (tile-position (- (@ e page-x) (@ this offset-left)))
+      (tile-position (- (@ e page-y) (@ this offset-top)))))))
 
 (init)
