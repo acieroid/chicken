@@ -36,6 +36,15 @@
             (result-array.push (fun.apply fun args-array)))))
     (return result-array)))
 
+;;; Actions
+(defun clear-actions ()
+  ((@ ($ "#actions") html) ""))
+
+(defun add-action (id name fun)
+  ((@ ($ "#actions") append)
+   (ps-html ((:input :type "button" :id id :value name))))
+  ((@ ($ (stringify "#" id)) click) fun))
+
 ;;; Tiles
 (defun tile-color (tile)
   (assoc tile +colors+))
@@ -60,11 +69,14 @@
               (list top top bottom bottom top))
       ((@ *context* stroke)))))
 
-#|(defun tile-handle-click (type map x y)
+(defun tile-handle-click (type map x y)
+  (clear-actions)
   (case type
     (:grass
-     (@ ($ "#actions" html)
-        (ps-html ((:input :type "button" :value "")))))))|#
+     (add-action "buy" "Buy" (lambda ()
+                               (setf (aref (@ map owned) x y) t)
+                               (redraw)
+                               (clear-actions))))))
 
 ;;; Maps
 (defun make-map (w h)
@@ -84,8 +96,6 @@
   (make-map (/ ((@ *canvas* width)) +tile-size+)
             (/ ((@ *canvas* height)) +tile-size+)))
 
-
-
 (defun map-foreach (f map)
   (dotimes (x (@ map width))
     (dotimes (y (@ map height))
@@ -101,12 +111,15 @@
 
 ;;; Game
 (defun handle-click (x y)
-  (setf (aref (@ *map* owned) x y) t)
-  (clear)
-  (draw-map *map*))
+  (tile-handle-click (aref (@ *map* contents) x y) *map* x y)
+  (redraw))
 
 (defun clear ()
   ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height))))
+
+(defun redraw ()
+  (clear)
+  (draw-map *map*))
 
 (defun init ()
   (setq *canvas* ($ "#canvas"))
@@ -124,4 +137,3 @@
       (tile-position (- (@ e page-x) (@ this offset-left)))
       (tile-position (- (@ e page-y) (@ this offset-top)))))))
 
-(init)
