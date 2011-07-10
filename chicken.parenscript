@@ -9,7 +9,7 @@
 (defvar +colors+
   '((:grass "#180")
     (:mud "#531")
-    (:water "47F")))
+    (:water "#47F")))
 (defvar +tile-size+ 30)
 
 ;;; Utils
@@ -60,6 +60,12 @@
               (list top top bottom bottom top))
       ((@ *context* stroke)))))
 
+#|(defun tile-handle-click (type map x y)
+  (case type
+    (:grass
+     (@ ($ "#actions" html)
+        (ps-html ((:input :type "button" :value "")))))))|#
+
 ;;; Maps
 (defun make-map (w h)
   (let ((contents (make-array))
@@ -107,11 +113,11 @@
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (clear)
   ((@ ($ "#content") html)
-   (ps-html ((:input :type "button" :id "new" :value "New Game"
-                     :onclick (lambda ()
-                                (setq *map* (new-map))
-                                (draw-map *map*))))))
-  ((@ ($ "#new") click) (lambda () (setq *map* (new-map)) (draw-map *map*)))
+   (ps-html ((:input :type "button" :value "New Game"
+                     :onclick (ps-inline
+                               (progn
+                                 (setq *map* (new-map))
+                                 (draw-map *map*)))))))
   ((@ *canvas* click)
    (lambda (e)
      (handle-click
