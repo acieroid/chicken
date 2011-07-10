@@ -36,18 +36,32 @@
             (result-array.push (fun.apply fun args-array)))))
     (return result-array)))
 
-;;; Maps
+;;; Tiles
 (defun tile-color (tile)
   (assoc tile +colors+))
+
 
 (defun tile-position (pos)
   (floor (/ pos +tile-size+)))
 
-(tile-position 53)
-
 (defun random-tile ()
   (first (elt +colors+ (random (@ +colors+ length)))))
 
+(defun draw-tile (x y type owned-p)
+  (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
+         (top (* y +tile-size+)) (bottom (+ top +tile-size+)))
+    (setf (@ *context* fill-style) (tile-color type))
+    ((@ *context* fill-rect) left top right bottom)
+    (when owned-p
+      (setf (@ *context* stroke-style) "#F00")
+      ((@ *context* begin-path))
+      ((@ *context* move-to) left top)
+      (mapcar (lambda (x y) ((@ *context* line-to) x y))
+              (list left right right left left)
+              (list top top bottom bottom top))
+      ((@ *context* stroke)))))
+
+;;; Maps
 (defun make-map (w h)
   (let ((contents (make-array))
         (owned (make-array)))
@@ -65,19 +79,7 @@
   (make-map (/ ((@ *canvas* width)) +tile-size+)
             (/ ((@ *canvas* height)) +tile-size+)))
 
-(defun draw-tile (x y type owned-p)
-  (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
-         (top (* y +tile-size+)) (bottom (+ top +tile-size+)))
-    (setf (@ *context* fill-style) (tile-color type))
-    ((@ *context* fill-rect) left top right bottom)
-    (when owned-p
-      (setf (@ *context* stroke-style) "#F00")
-      ((@ *context* begin-path))
-      ((@ *context* move-to) left top)
-      (mapcar (lambda (x y) ((@ *context* line-to) x y))
-              (list left right right left left)
-              (list top top bottom bottom top))
-      ((@ *context* stroke)))))
+
 
 (defun map-foreach (f map)
   (dotimes (x (@ map width))
@@ -92,6 +94,7 @@
                               (aref (@ map owned) x y)))
                  map)))
 
+;;; Game
 (defun handle-click (x y)
   (setf (aref (@ *map* owned) x y) t)
   (clear)
