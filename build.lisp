@@ -7,7 +7,7 @@
 (in-package :build)
 
 
-(defvar *sources* '("chicken.parenscript"))
+(defvar *sources* '("chicken.parenscript" "name-generator.parenscript"))
 (defvar *target* "release")
 
 (setf *read-eval* nil)
