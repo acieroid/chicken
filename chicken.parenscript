@@ -1,9 +1,17 @@
 ;;; -*- Mode: LISP; slime-proxy-proxy-connection: t -*-
 (in-package :ps)
 
+;;; Variables and constants
 (defvar *canvas*)
 (defvar *context*)
 
+(defvar +colors+
+  '((:grass "#180")
+    (:mud "#531")
+    (:water "47F")))
+(defvar +tile-size+ 30)
+
+;;; Utils
 (defun first (l)
   (elt l 0))
 (defun second (l)
@@ -17,15 +25,14 @@
          last))
    nil))
 
-;; Maps
-(defvar +colors+
-  '((:grass "#180")
-    (:mud "#531")
-    (:water "47F")))
-(defvar +tile-size+ 30)
-
+;;; Maps
 (defun tile-color (tile)
   (assoc tile +colors+))
+
+(defun tile-position (pos)
+  (floor (/ pos +tile-size+)))
+
+(tile-position 53)
 
 (defun random-tile ()
   (first (elt +colors+ (random (@ +colors+ length)))))
@@ -55,8 +62,10 @@
       ((@ *context* line-to) (+ (* x +tile-size+) +tile-size+) (* y +tile-size+))
       ((@ *context* line-to) (* x +tile-size+) (* y +tile-size+))
       ((@ *context* stroke))
-      ))
-  )
+      )))
+
+(defun handle-click (x y)
+  (alert (stringify x ", " y)))
 
 (defun clear ()
   ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height))))
@@ -65,7 +74,14 @@
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (clear)
-  ((@ ($ "#content") html) "<input type=\"button\" id=\"drawMap\" value=\"Draw a new map\"/>")
-  ((@ ($ "#drawMap") click) (lambda () (draw-map (make-map (/ ((@ *canvas* width)) +tile-size+)
-                                                           (/ ((@ *canvas* height)) +tile-size+))))))
+  ((@ ($ "#content") html)
+   "<input type=\"button\" id=\"drawMap\" value=\"Draw a new map\"/>")
+  ((@ ($ "#drawMap") click)
+   (lambda () (draw-map (make-map (/ ((@ *canvas* width)) +tile-size+)
+                                  (/ ((@ *canvas* height)) +tile-size+)))))
+  ((@ *canvas* click)
+   (lambda (e)
+     (handle-click (tile-position (- (@ e page-x) (@ this offset-left)))
+                   (tile-position (- (@ e page-y) (@ this offset-top)))))))
 
+(init)
