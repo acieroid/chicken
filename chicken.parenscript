@@ -11,9 +11,11 @@
   '((:grass-1 "#180")
     (:grass-2 "#291")
     (:grass-3 "#3C2")
-    (:mud "#531")))
+    (:mud "#531")
+    (:city "#00F")))
 (defvar +tile-size+ 10)
 (defvar +initial-money+ 100)
+(defvar +city-factor+ 0.005)
 
 ;;; Utils
 (defun first (l)
@@ -93,7 +95,7 @@
   (floor (/ pos +tile-size+)))
 
 (defun random-tile ()
-  (first (elt +colors+ (random (@ +colors+ length)))))
+  (first (elt +colors+ (random (- (@ +colors+ length) 1)))))
 
 (defun draw-tile (x y type owned-p)
   (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
@@ -113,16 +115,58 @@
   (clear-actions)
   (case type
     ((:grass-1 :grass-2 :grass-3 :mud)
-     (add-action "buy" "Buy" (lambda ()
-                               (when (pay 10)
-                                 (message "Buying field")
-                                 (message (stringify "Money: " *money*))
-                                 (set-owned map x y)
-                                 (redraw))
-                               (clear-actions))))))
+     (add-action "buy" "Buy (costs 10)"
+                 (lambda ()
+                   (when (pay 10)
+                     (message "Buying field")
+                     (set-owned map x y)
+                     (redraw))
+                   (clear-actions))))
+    (:city
+     (let ((city (city map x y)))
+       (add-action "go" (stringify "Go to " (@ city name))
+                   (lambda ()
+                     (message (stringify "Going to " (@ city name)))
+                     (clear-actions)))))))
 
 ;;; Cities
+(defun make-city ()
+  (create type "city" :name (make-city-name)))
+
+(defun can-place-city (map x y)
+  (flet ((check (x y)
+           (if (and (>= x 0) (>= y 0)
+                    (< x (@ map width)) (< y (@ map height)))
+               (when (= (tile-type map x y) :city)
+                 (return false)))))
+    (mapcar check
+            (list x x x
+                  (- x 1) (- x 1) (- x 1)
+                  (+ x 1) (+ x 1) (+ x 1))
+            (list y (- y 1) (+ y 1)
+                  y (- y 1) (+ y 1)
+                  y (- y 1) (+ y 1)))))
+
+(defun add-cities (map)
+  (labels ((helper (n)
+             (when (>= n 0)
+               (let ((x (random (@ map width)))
+                     (y (random (@ map height))))
+                 (if (can-place-city map x y)
+                     (progn
+                       (set-city map x y (make-city))
+                       (helper (- n 1)))
+                     (helper n))))))
+    (helper (floor (* +city-factor+ (@ map width) (@ map height))))))
+
 ;;; Maps
+(defun set-city (map x y city)
+  (setf (aref (@ map cities) x y) city)
+  (set-tile-type map x y :city))
+
+(defun city (map x y)
+  (aref (@ map cities) x y))
+
 (defun set-owned (map x y &optional (status t))
   (setf (aref (@ map owned) x y) t))
 
@@ -143,21 +187,27 @@
 
 (defun make-map (w h)
   (let ((contents (make-array))
-        (owned (make-array)))
+        (owned (make-array))
+        (cities (make-array)))
     (dotimes (x w)
       (setf (aref contents x) (make-array))
       (setf (aref owned x) (make-array))
+      (setf (aref cities x) (make-array))
       (dotimes (y h)
         (setf (aref contents x y) (random-tile))
         (setf (aref owned x y) nil)))
     (create type "map"
             :width w :height h
-            :contents contents :owned owned)))
+            :contents contents :owned owned
+            :cities cities)))
 
 
 (defun new-map ()
-  (make-map (/ ((@ *canvas* width)) +tile-size+)
-            (/ ((@ *canvas* height)) +tile-size+)))
+  (let ((map
+         (make-map (/ ((@ *canvas* width)) +tile-size+)
+                   (/ ((@ *canvas* height)) +tile-size+))))
+    (add-cities map)
+    map))
 
 (defun map-foreach (f map)
   (dotimes (x (@ map width))
