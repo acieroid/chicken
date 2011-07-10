@@ -1,0 +1,15 @@
+;;; -*- Mode: LISP; slime-proxy-proxy-connection: t -*-
+(defvar *prefixes* '("Red" "Black" "Green" "Blue" "White" "Yellow" "Spring" "Wood" "Port" "Clear" "New" "Fair" "Mid" "Cali" "Game"))
+(defvar *mid-first* '("ash" "si" "gra" "ut" "oes" "uto" "onl" "rox" "fu"))
+(defvar *mid-second* '("ble" "ce" "any" "lish" "low" "fie" "wut" "lol" "for" "full" "pong"))
+(defvar *suffixes* '("City" "Town" "Island" "Grove" "Shore" "Castle" "Crossing" "Field"))
+
+(defun random-element (list)
+  (elt list (random (length list))))
+
+(defun make-city-name ()
+  (stringify (random-element *prefixes*)
+             (random-element *mid-first*)
+             (random-element *mid-second*)
+             (when (= (random 3) 1)
+               (stringify " " (random-element *suffixes*)))))
