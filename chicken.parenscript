@@ -117,11 +117,30 @@
                                (when (pay 10)
                                  (message "Buying field")
                                  (message (stringify "Money: " *money*))
-                                 (setf (aref (@ map owned) x y) t)
+                                 (set-owned map x y)
                                  (redraw))
                                (clear-actions))))))
 
+;;; Cities
 ;;; Maps
+(defun set-owned (map x y &optional (status t))
+  (setf (aref (@ map owned) x y) t))
+
+(defun owned (map x y)
+  (aref (@ map owned) x y))
+
+(defun set-tile-type (map x y type)
+  (setf (aref (@ map contents) x y) type))
+
+(defun tile-type (map x y)
+  (aref (@ map contents) x y))
+
+(defun map-width (map)
+  (@ map width))
+
+(defun map-height (map)
+  (@ map height))
+
 (defun make-map (w h)
   (let ((contents (make-array))
         (owned (make-array)))
@@ -134,6 +153,7 @@
     (create type "map"
             :width w :height h
             :contents contents :owned owned)))
+
 
 (defun new-map ()
   (make-map (/ ((@ *canvas* width)) +tile-size+)
@@ -148,8 +168,8 @@
   (let ((borders-func (make-array)))
     (map-foreach (lambda (x y)
                    (draw-tile x y
-                              (aref (@ map contents) x y)
-                              (aref (@ map owned) x y)))
+                              (tile-type map x y)
+                              (owned map x y)))
                  map)))
 
 (defun init-map ()
@@ -161,7 +181,7 @@
 
 ;;; Game
 (defun handle-click (x y)
-  (tile-handle-click (aref (@ *map* contents) x y) *map* x y)
+  (tile-handle-click (tile-type *map* x y) *map* x y)
   (redraw))
 
 (defun clear ()
@@ -177,11 +197,12 @@
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (init-money)
   (init-map)
-  (redraw)
+  (clear)
+  (clear-actions)
   (add-action "new" "New Game"
               (lambda ()
                 (message "New game started")
                 (clear-actions)
                 (setq *map* (new-map))
-                (draw-map *map*))))
-
+                (draw-map *map*)
+                (redraw))))
