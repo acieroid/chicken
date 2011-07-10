@@ -40,7 +40,6 @@
 (defun tile-color (tile)
   (assoc tile +colors+))
 
-
 (defun tile-position (pos)
   (floor (/ pos +tile-size+)))
 
@@ -108,7 +107,10 @@
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (clear)
   ((@ ($ "#content") html)
-   "<input type=\"button\" id=\"new\" value=\"New game\"/>")
+   (ps-html ((:input :type "button" :id "new" :value "New Game"
+                     :onclick (lambda ()
+                                (setq *map* (new-map))
+                                (draw-map *map*))))))
   ((@ ($ "#new") click) (lambda () (setq *map* (new-map)) (draw-map *map*)))
   ((@ *canvas* click)
    (lambda (e)
