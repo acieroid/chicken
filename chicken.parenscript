@@ -14,7 +14,11 @@
   '((:grass-1 "#180")
     (:grass-2 "#291")
     (:grass-3 "#3C2")
-    (:mud "#531")
+    (:grass-4 "#190")
+    (:grass-5 "#5D3")
+    (:mud-1 "#531")
+    (:mud-2 "#543")
+    (:mud-3 "#364")
     (:city "#00F")
     (:home "#F00")))
 (defvar +tile-size+ 10)
@@ -125,7 +129,7 @@
 (defun tile-handle-click (type map x y)
   (clear-actions)
   (case type
-    ((:grass-1 :grass-2 :grass-3 :mud)
+    ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
      (add-action "buy" "Buy (costs 10)"
                  (lambda ()
                    (when (pay 10)
