@@ -72,7 +72,18 @@
         false)
       (progn
         (setf *money* (- *money* price))
+        (display-money)
         t)))
+
+(defun earn (money)
+  (setf *money* (+ *money* money)))
+
+(defun display-money ()
+  ((@ ($ "#money") html) (stringify "Money: " *money*)))
+
+(defun init-money ()
+  (setf *money* +initial-money+)
+  (display-money))
 
 ;;; Tiles
 (defun tile-color (tile)
@@ -103,9 +114,11 @@
   (case type
     ((:grass-1 :grass-2 :grass-3 :mud)
      (add-action "buy" "Buy" (lambda ()
-                               (message "Buying field")
-                               (setf (aref (@ map owned) x y) t)
-                               (redraw)
+                               (when (pay 10)
+                                 (message "Buying field")
+                                 (message (stringify "Money: " *money*))
+                                 (setf (aref (@ map owned) x y) t)
+                                 (redraw))
                                (clear-actions))))))
 
 ;;; Maps
@@ -139,6 +152,13 @@
                               (aref (@ map owned) x y)))
                  map)))
 
+(defun init-map ()
+  ((@ *canvas* click)
+   (lambda (e)
+     (handle-click
+      (tile-position (- (@ e page-x) (@ this offset-left)))
+      (tile-position (- (@ e page-y) (@ this offset-top)))))))
+
 ;;; Game
 (defun handle-click (x y)
   (tile-handle-click (aref (@ *map* contents) x y) *map* x y)
@@ -149,21 +169,19 @@
 
 (defun redraw ()
   (clear)
+  (display-money)
   (draw-map *map*))
 
 (defun init ()
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
-  (clear)
+  (init-money)
+  (init-map)
+  (redraw)
   (add-action "new" "New Game"
               (lambda ()
                 (message "New game started")
                 (clear-actions)
                 (setq *map* (new-map))
-                (draw-map *map*)))
-  ((@ *canvas* click)
-   (lambda (e)
-     (handle-click
-      (tile-position (- (@ e page-x) (@ this offset-left)))
-      (tile-position (- (@ e page-y) (@ this offset-top)))))))
+                (draw-map *map*))))
 
