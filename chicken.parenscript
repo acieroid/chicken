@@ -5,12 +5,15 @@
 (defvar *canvas*)
 (defvar *context*)
 (defvar *map*)
+(defvar *money*)
 
 (defvar +colors+
-  '((:grass "#180")
-    (:mud "#531")
-    (:water "#47F")))
-(defvar +tile-size+ 30)
+  '((:grass-1 "#180")
+    (:grass-2 "#291")
+    (:grass-3 "#3C2")
+    (:mud "#531")))
+(defvar +tile-size+ 10)
+(defvar +initial-money+ 100)
 
 ;;; Utils
 (defun first (l)
@@ -36,7 +39,19 @@
             (result-array.push (fun.apply fun args-array)))))
     (return result-array)))
 
-;;; Actions
+
+(defun get-time ()
+  ;; The - before date is necessary here to have a capital in compiled code
+  (let* ((date (new -date))
+         (hours ((@ date get-hours)))
+         (minutes ((@ date get-minutes)))
+         (seconds ((@ date get-seconds))))
+    (stringify
+     (when (< hours 10) "0") hours ":"
+     (when (< minutes 10) "0") minutes ":"
+     (when (< seconds 10) "0") seconds)))
+
+;;; Actions and messages
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
 
@@ -44,6 +59,20 @@
   ((@ ($ "#actions") append)
    (ps-html ((:input :type "button" :id id :value name))))
   ((@ ($ (stringify "#" id)) click) fun))
+
+(defun message (str)
+  ((@ ($ "#content") prepend)
+   (stringify (get-time) "> " str "<br/>")))
+
+;;; Money
+(defun pay (price)
+  (if (> price *money*)
+      (progn
+        (message "You can't afford that !")
+        false)
+      (progn
+        (setf *money* (- *money* price))
+        t)))
 
 ;;; Tiles
 (defun tile-color (tile)
@@ -72,8 +101,9 @@
 (defun tile-handle-click (type map x y)
   (clear-actions)
   (case type
-    (:grass
+    ((:grass-1 :grass-2 :grass-3 :mud)
      (add-action "buy" "Buy" (lambda ()
+                               (message "Buying field")
                                (setf (aref (@ map owned) x y) t)
                                (redraw)
                                (clear-actions))))))
@@ -125,12 +155,12 @@
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
   (clear)
-  ((@ ($ "#content") html)
-   (ps-html ((:input :type "button" :value "New Game"
-                     :onclick (ps-inline
-                               (progn
-                                 (setq *map* (new-map))
-                                 (draw-map *map*)))))))
+  (add-action "new" "New Game"
+              (lambda ()
+                (message "New game started")
+                (clear-actions)
+                (setq *map* (new-map))
+                (draw-map *map*)))
   ((@ *canvas* click)
    (lambda (e)
      (handle-click
