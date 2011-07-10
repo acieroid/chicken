@@ -59,6 +59,8 @@
   (setf *turn* (+ *turn* 1))
   (message (stringify "Starting turn " *turn*)))
 
+(defun init-turns ()
+  (setf *turn* 0))
 ;;; Actions and messages
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
@@ -69,7 +71,7 @@
   ((@ ($ (stringify "#" id)) click) fun))
 
 (defun init-messages (str)
-  (@ ($ "#messages") html) "")
+  ((@ ($ "#messages") html) ""))
 
 (defun message (str)
   ((@ ($ "#messages") prepend)
@@ -256,6 +258,7 @@
 (defun init ()
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
+  (init-turns)
   (init-messages)
   (init-money)
   (init-map)
