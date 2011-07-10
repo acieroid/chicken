@@ -6,6 +6,7 @@
 (defvar *context*)
 (defvar *map*)
 (defvar *money*)
+(defvar *turn*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -53,6 +54,11 @@
      (when (< minutes 10) "0") minutes ":"
      (when (< seconds 10) "0") seconds)))
 
+;;; Turns
+(defun next-turn ()
+  (setf *turn* (+ *turn* 1))
+  (message (stringify "Starting turn " *turn*)))
+
 ;;; Actions and messages
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
@@ -62,8 +68,11 @@
    (ps-html ((:input :type "button" :id id :value name))))
   ((@ ($ (stringify "#" id)) click) fun))
 
+(defun init-messages (str)
+  (@ ($ "#messages") html) "")
+
 (defun message (str)
-  ((@ ($ "#content") prepend)
+  ((@ ($ "#messages") prepend)
    (stringify (get-time) "> " str "<br/>")))
 
 ;;; Money
@@ -120,6 +129,7 @@
                    (when (pay 10)
                      (message "Buying field")
                      (set-owned map x y)
+                     (next-turn)
                      (redraw))
                    (clear-actions))))
     (:city
@@ -127,6 +137,7 @@
        (add-action "go" (stringify "Go to " (@ city name))
                    (lambda ()
                      (message (stringify "Going to " (@ city name)))
+                     (next-turn)
                      (clear-actions)))))))
 
 ;;; Cities
@@ -245,6 +256,7 @@
 (defun init ()
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
+  (init-messages)
   (init-money)
   (init-map)
   (clear)
