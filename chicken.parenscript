@@ -7,13 +7,16 @@
 (defvar *map*)
 (defvar *money*)
 (defvar *turn*)
+(defvar *city*)
+(defvar *home*)
 
 (defvar +colors+
   '((:grass-1 "#180")
     (:grass-2 "#291")
     (:grass-3 "#3C2")
     (:mud "#531")
-    (:city "#00F")))
+    (:city "#00F")
+    (:home "#F00")))
 (defvar +tile-size+ 10)
 (defvar +initial-money+ 100)
 (defvar +city-factor+ 0.005)
@@ -61,6 +64,7 @@
 
 (defun init-turns ()
   (setf *turn* 0))
+
 ;;; Actions and messages
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
@@ -85,18 +89,14 @@
         false)
       (progn
         (setf *money* (- *money* price))
-        (display-money)
+        (display-infos)
         t)))
 
 (defun earn (money)
   (setf *money* (+ *money* money)))
 
-(defun display-money ()
-  ((@ ($ "#money") html) (stringify "Money: " *money*)))
-
 (defun init-money ()
-  (setf *money* +initial-money+)
-  (display-money))
+  (setf *money* +initial-money+))
 
 ;;; Tiles
 (defun tile-color (tile)
@@ -106,7 +106,7 @@
   (floor (/ pos +tile-size+)))
 
 (defun random-tile ()
-  (first (elt +colors+ (random (- (@ +colors+ length) 1)))))
+  (first (elt +colors+ (random (- (@ +colors+ length) 2)))))
 
 (defun draw-tile (x y type owned-p)
   (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
@@ -134,17 +134,16 @@
                      (next-turn)
                      (redraw))
                    (clear-actions))))
-    (:city
+    ((:city :home)
      (let ((city (city map x y)))
        (add-action "go" (stringify "Go to " (@ city name))
                    (lambda ()
-                     (message (stringify "Going to " (@ city name)))
-                     (next-turn)
+                     (go-to city)
                      (clear-actions)))))))
 
 ;;; Cities
-(defun make-city ()
-  (create type "city" :name (make-city-name)))
+(defun make-city (x y)
+  (create type "city" :name (make-city-name) :x x :y y))
 
 (defun can-place-city (map x y)
   (flet ((check (x y)
@@ -167,12 +166,36 @@
                      (y (random (@ map height))))
                  (if (can-place-city map x y)
                      (progn
-                       (set-city map x y (make-city))
+                       (set-city map x y (make-city x y))
                        (helper (- n 1)))
                      (helper n))))))
     (helper (floor (* +city-factor+ (@ map width) (@ map height))))))
 
+(defun add-home (map)
+  (labels ((helper ()
+             (let ((x (random (@ map width)))
+                   (y (random (@ map height))))
+               (if (can-place-city map x y)
+                   (progn
+                     (setf *home* (create type "home" :name "Home" :x x :y y))
+                     (set-home map x y))
+                   (helper)))))
+    (helper)))
+
+(defun go-to (city)
+  (message (stringify "Going to " (@ city name)))
+  (setf *city* city)
+  (display-infos)
+  (next-turn))
+
+(defun init-cities ()
+  (add-home *map*)
+  (setf *city* *home*))
+
 ;;; Maps
+(defun set-home (map x y)
+  (set-tile-type map x y :home))
+
 (defun set-city (map x y city)
   (setf (aref (@ map cities) x y) city)
   (set-tile-type map x y :city))
@@ -236,38 +259,46 @@
                  map)))
 
 (defun init-map ()
+  (setq *map* (new-map)))
+
+;;; Game
+(defun handle-click (x y)
+  (tile-handle-click (tile-type *map* x y) *map* x y))
+
+(defun clear ()
+  ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height)))
+  ((@ ($ "#infos") html) ""))
+
+(defun display-infos ()
+  ((@ ($ "#infos") html) (stringify "Money: " *money* " - "
+                                    "Turn: " *turn* " - "
+                                    "Location: " (@ *city* name))))
+
+(defun pre-init ()
   ((@ *canvas* click)
    (lambda (e)
      (handle-click
       (tile-position (- (@ e page-x) (@ this offset-left)))
       (tile-position (- (@ e page-y) (@ this offset-top)))))))
 
-;;; Game
-(defun handle-click (x y)
-  (tile-handle-click (tile-type *map* x y) *map* x y)
-  (redraw))
-
-(defun clear ()
-  ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height))))
-
 (defun redraw ()
   (clear)
-  (display-money)
+  (display-infos)
   (draw-map *map*))
 
 (defun init ()
   (setq *canvas* ($ "#canvas"))
   (setq *context* ((@ (getprop *canvas* 0) get-context) "2d"))
-  (init-turns)
-  (init-messages)
-  (init-money)
-  (init-map)
+  (pre-init)
   (clear)
   (clear-actions)
   (add-action "new" "New Game"
               (lambda ()
                 (message "New game started")
+                (init-messages)
+                (init-money)
+                (init-turns)
+                (init-map)
+                (init-cities)
                 (clear-actions)
-                (setq *map* (new-map))
-                (draw-map *map*)
                 (redraw))))
