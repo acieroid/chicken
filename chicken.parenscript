@@ -9,6 +9,7 @@
 (defvar *turn*)
 (defvar *city*)
 (defvar *home*)
+(defvar *chickens*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -23,6 +24,7 @@
     (:home "#F00")))
 (defvar +tile-size+ 20)
 (defvar +initial-money+ 100)
+(defvar +initial-chickens+ 0)
 (defvar +city-factor+ 0.005)
 
 ;;; Utils
@@ -64,6 +66,7 @@
 (defun next-turn ()
   (setf *turn* (+ *turn* 1))
   (message (stringify "Starting turn " *turn*))
+  (update-static-actions)
   (display-infos))
 
 (defun init-turns ()
@@ -73,10 +76,23 @@
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
 
-(defun add-action (id name fun)
-  ((@ ($ "#actions") append)
+(defun add-action (id name fun &optional (type "#actions"))
+  ((@ ($ type) append)
    (ps-html ((:input :type "button" :id id :value name))))
   ((@ ($ (stringify "#" id)) click) fun))
+
+(defun add-number-action (id name fun &optional (type "#actions"))
+  (let ((text-id (stringify id "-text")))
+    ((@ ($ type) append)
+     (stringify
+      (ps-html ((:input :type "text" :id text-id :value 0)))
+      (ps-html ((:input :type "button" :id id :value name)))))
+    ((@ ($ (stringify "#" id)) click)
+     (lambda ()
+       (let ((n (parse-int ((@ ($ (stringify "#" text-id)) val)))))
+         (alert (stringify "Clicked: " n))
+         (when n ;; Don't call if zero or not a number
+           (fun n)))))))
 
 (defun init-messages (str)
   ((@ ($ "#messages") html) ""))
@@ -84,6 +100,26 @@
 (defun message (str)
   ((@ ($ "#messages") prepend)
    (stringify (get-time) "> " str "<br/>")))
+
+(defun update-static-actions ()
+  ((@ ($ "#static-actions") html) "")
+  (add-action "new" "New Game"
+              (lambda ()
+                (message "New game started")
+                (init-messages)
+                (init-money)
+                (init-turns)
+                (init-chickens)
+                (init-map)
+                (init-cities)
+                (clear-actions)
+                (redraw))
+              "#static-actions")
+  (unless (= *city* *home*)
+    (add-number-action "buy-chickens" "Buy chickens"
+                       (lambda (n)
+                         (buy-chickens 1 n))
+                       "#static-actions")))
 
 ;;; Money
 (defun pay (price)
@@ -102,12 +138,32 @@
 (defun init-money ()
   (setf *money* +initial-money+))
 
+;;; Chickens
+(defun buy-chickens (price number)
+  (if (pay (* price number))
+      (incf *chickens* number)
+      false))
+
+(defun put-chickens (number tile)
+  (if (> number *chickens*)
+      (progn
+        (message "Not enough chickens")
+        false)
+      (progn
+        (tile-set-chickens (+ (tile-chickens tile) number))
+        (decf *chickens* number)
+        t)))
+
+(defun init-chickens ()
+  (setf *chickens* +initial-chickens+))
+
 ;;; Tiles
 (defun random-tile ()
   (create type "tile"
           :tiletype (first (elt +colors+ (random (- (@ +colors+ length) 2))))
           :owned false
-          :city false))
+          :city false
+          :chickens 0))
 
 (defun tile-color (tile)
   (assoc (tile-type tile) +colors+))
@@ -174,10 +230,11 @@
                      (go-to city)
                      (clear-actions)))))
     (:home
-     (add-action "go" "Go home"
-                 (lambda ()
-                   (go-to *home*)
-                   (clear-actions))))))
+     (unless (= *city* *home*)
+       (add-action "go" "Go home"
+                   (lambda ()
+                     (go-to *home*)
+                     (clear-actions)))))))
 
 ;;; Cities
 (defun make-city (x y)
@@ -325,6 +382,7 @@
 (defun display-infos ()
   ((@ ($ "#infos") html) (stringify "Money: " *money* " - "
                                     "Turn: " *turn* " - "
+                                    "Chickens: " *chickens* " - "
                                     "Location: " (@ *city* name))))
 
 (defun pre-init ()
@@ -345,13 +403,4 @@
   (pre-init)
   (clear)
   (clear-actions)
-  (add-action "new" "New Game"
-              (lambda ()
-                (message "New game started")
-                (init-messages)
-                (init-money)
-                (init-turns)
-                (init-map)
-                (init-cities)
-                (clear-actions)
-                (redraw))))
+  (update-static-actions))
