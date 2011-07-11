@@ -65,7 +65,7 @@
 ;;; Turns
 (defun next-turn ()
   (setf *turn* (+ *turn* 1))
-  (message (stringify "Starting turn " *turn*))
+  (message "Starting turn " *turn*)
   (update-static-actions)
   (display-infos))
 
@@ -99,9 +99,9 @@
 (defun init-messages (str)
   ((@ ($ "#messages") html) ""))
 
-(defun message (str)
+(defun message (&rest strs)
   ((@ ($ "#messages") prepend)
-   (stringify (get-time) "> " str "<br/>")))
+   (stringify (get-time) "> " ((@ strs join) "") "<br/>")))
 
 (defun update-static-actions ()
   ((@ ($ "#static-actions") html) "")
@@ -114,14 +114,12 @@
     (add-number-action "buy-chickens" "Buy chickens"
                        (lambda (n)
                          (when (buy-chickens 1 n)
-                           (message (stringify "Bought " n " chickens at "
-                                               (@ *city* name)))))
+                           (message "Bought " n " chickens at " (@ *city* name))))
                        "#static-actions")
     (add-number-action "sell-chickens" "Sell chickens"
                        (lambda (n)
                          (when (sell-chickens 1 n)
-                           (message (stringify "Sold " n " chickens at "
-                                               (@ *city* name)))))
+                           (message "Sold " n " chickens at " (@ *city* name))))
                        "#static-actions")))
 
 ;;; Money
@@ -312,7 +310,7 @@
 (defun go-to (city)
   (if (= city *home*)
       (message "Home sweet home")
-      (message (stringify "Going to " (@ city name))))
+      (message "Going to " (@ city name)))
   (setf *city* city)
   (display-infos)
   (next-turn))
