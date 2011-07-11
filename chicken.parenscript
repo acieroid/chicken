@@ -21,7 +21,7 @@
     (:mud-3 "#364")
     (:city "#00F")
     (:home "#F00")))
-(defvar +tile-size+ 10)
+(defvar +tile-size+ 20)
 (defvar +initial-money+ 100)
 (defvar +city-factor+ 0.005)
 
@@ -46,7 +46,7 @@
           ((@ result-array push) (fun element)))
         (dotimes (i (length (aref as 0)))
           (let ((args-array (mapcar (lambda (a) (return (aref a i))) as)))
-            (result-array.push (fun.apply fun args-array)))))
+            ((@ result-array push) (fun.apply fun args-array)))))
     (return result-array)))
 
 (defun get-time ()
@@ -103,21 +103,42 @@
   (setf *money* +initial-money+))
 
 ;;; Tiles
+(defun random-tile ()
+  (create type "tile"
+          :tiletype (first (elt +colors+ (random (- (@ +colors+ length) 2))))
+          :owned false
+          :city false))
+
 (defun tile-color (tile)
-  (assoc tile +colors+))
+  (assoc (tile-type tile) +colors+))
+
+(defun tile-type (tile)
+  (@ tile tiletype))
+
+(defun tile-set-type (tile type)
+  (setf (@ tile tiletype) type))
+
+(defun tile-owned-p (tile)
+  (@ tile owned))
+
+(defun tile-set-owned (tile &optional (status t))
+  (setf (@ tile owned) status))
+
+(defun tile-city (tile city)
+  (@ tile city))
+
+(defun tile-set-city (tile city)
+  (setf (@ tile city) city))
 
 (defun tile-position (pos)
   (floor (/ pos +tile-size+)))
 
-(defun random-tile ()
-  (first (elt +colors+ (random (- (@ +colors+ length) 2)))))
-
-(defun draw-tile (x y type owned-p)
+(defun draw-tile (tile x y)
   (let* ((left (* x +tile-size+)) (right (+ left +tile-size+))
          (top (* y +tile-size+)) (bottom (+ top +tile-size+)))
-    (setf (@ *context* fill-style) (tile-color type))
+    (setf (@ *context* fill-style) (tile-color tile))
     ((@ *context* fill-rect) left top right bottom)
-    (when owned-p
+    (when (tile-owned-p tile)
       (setf (@ *context* stroke-style) "#F00")
       ((@ *context* begin-path))
       ((@ *context* move-to) left top)
@@ -126,16 +147,16 @@
               (list top top bottom bottom top))
       ((@ *context* stroke)))))
 
-(defun tile-handle-click (type map x y)
+(defun tile-handle-click (tile map x y)
   (clear-actions)
-  (case type
+  (case (tile-type tile)
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
-     (if (owned map x y)
+     (if (tile-owned-p tile)
          (add-action "sell" "Sell at 10"
                      (lambda ()
                        (earn 10)
                        (message "Sold field")
-                       (set-owned map x y false)
+                       (tile-set-owned tile false)
                        (redraw)
                        (clear-actions)))
          (when (and (= *city* *home*) (can-buy-field map x y))
@@ -143,17 +164,17 @@
                        (lambda ()
                          (when (pay 10)
                            (message "Buying field")
-                           (set-owned map x y)
+                           (tile-set-owned tile x y)
                            (redraw))
                          (clear-actions))))))
     (:city
-     (let ((city (city map x y)))
+     (let ((city (tile-city tile)))
        (add-action "go" (stringify "Go to " (@ city name))
                    (lambda ()
                      (go-to city)
                      (clear-actions)))))
     (:home
-     (add-action "go" (stringify "Go home")
+     (add-action "go" "Go home"
                  (lambda ()
                    (go-to *home*)
                    (clear-actions))))))
@@ -169,8 +190,8 @@
        (dolist (pos-y (list (- y 1) y (+ y 1)))
          (when (and (not (and (= pos-x x) (= pos-y y)))
                     (>= pos-x 0) (>= pos-y 0)
-                    (< pos-x (@ map width))
-                    (< pos-y (@ map height)))
+                    (< pos-x (map-width map))
+                    (< pos-y (map-height map)))
            (unless (fun pos-x pos-y)
              (throw "end")))))
      true)
@@ -180,40 +201,40 @@
 (defun can-place-city (map x y)
   (flet ((check (x y)
            (if (and (>= x 0) (>= y 0)
-                    (< x (@ map width)) (< y (@ map height)))
-               (not (= (tile-type map x y) :city)))))
-    (and (not (= (tile-type map x y) :city))
+                    (< x (map-width map)) (< y (map-height map)))
+               (not (= (map-tile-type map x y) :city)))))
+    (and (not (= (map-tile-type map x y) :city))
         (check-adjacent-cases check map x y))))
 
 (defun can-buy-field (map x y)
   (and
-   (not (owned map x y))
+   (not (map-owned-p map x y))
    (not (check-adjacent-cases (lambda (x y)
                                 (not
-                                 (or (= (tile-type map x y) :home)
-                                     (owned map x y))))
+                                 (or (= (map-tile-type map x y) :home)
+                                     (map-owned-p map x y))))
                               map x y))))
 
 (defun add-cities (map)
   (labels ((helper (n)
              (when (>= n 0)
-               (let ((x (random (@ map width)))
-                     (y (random (@ map height))))
+               (let ((x (random (map-width map)))
+                     (y (random (map-height map))))
                  (if (can-place-city map x y)
                      (progn
-                       (set-city map x y (make-city x y))
+                       (map-set-city map x y (make-city x y))
                        (helper (- n 1)))
                      (helper n))))))
-    (helper (floor (* +city-factor+ (@ map width) (@ map height))))))
+    (helper (floor (* +city-factor+ (map-width map) (map-height map))))))
 
 (defun add-home (map)
   (labels ((helper ()
-             (let ((x (random (@ map width)))
-                   (y (random (@ map height))))
+             (let ((x (random (map-width map)))
+                   (y (random (map-height map))))
                (if (can-place-city map x y)
                    (progn
                      (setf *home* (create type "home" :name "Home" :x x :y y))
-                     (set-home map x y))
+                     (map-set-home map x y))
                    (helper)))))
     (helper)))
 
@@ -230,49 +251,15 @@
   (setf *city* *home*))
 
 ;;; Maps
-(defun set-home (map x y)
-  (set-tile-type map x y :home))
-
-(defun set-city (map x y city)
-  (setf (aref (@ map cities) x y) city)
-  (set-tile-type map x y :city))
-
-(defun city (map x y)
-  (aref (@ map cities) x y))
-
-(defun set-owned (map x y &optional (status t))
-  (setf (aref (@ map owned) x y) status))
-
-(defun owned (map x y)
-  (aref (@ map owned) x y))
-
-(defun set-tile-type (map x y type)
-  (setf (aref (@ map contents) x y) type))
-
-(defun tile-type (map x y)
-  (aref (@ map contents) x y))
-
-(defun map-width (map)
-  (@ map width))
-
-(defun map-height (map)
-  (@ map height))
-
 (defun make-map (w h)
-  (let ((contents (make-array))
-        (owned (make-array))
-        (cities (make-array)))
+  (let ((contents (make-array)))
     (dotimes (x w)
       (setf (aref contents x) (make-array))
-      (setf (aref owned x) (make-array))
-      (setf (aref cities x) (make-array))
       (dotimes (y h)
-        (setf (aref contents x y) (random-tile))
-        (setf (aref owned x y) nil)))
+        (setf (aref contents x y) (random-tile))))
     (create type "map"
             :width w :height h
-            :contents contents :owned owned
-            :cities cities)))
+            :contents contents)))
 
 
 (defun new-map ()
@@ -282,25 +269,54 @@
     (add-cities map)
     map))
 
+(defun map-width (map)
+  (@ map width))
+
+(defun map-height (map)
+  (@ map height))
+
+(defun map-tile-at (map x y)
+  (aref (@ map contents) x y))
+
+(defun map-set-home (map x y)
+  (map-set-tile-type map x y :home))
+
+(defun map-set-city (map x y city)
+  (tile-set-city (map-tile-at map x y) city)
+  (map-set-tile-type map x y :city))
+
+(defun map-city (map x y)
+  (tile-city (map-tile-at map x y)))
+
+(defun map-set-owned (map x y &optional (status t))
+  (tile-set-owned (map-tile-at map x y) status))
+
+(defun map-owned-p (map x y)
+  (tile-owned-p (map-tile-at map x y)))
+
+(defun map-set-tile-type (map x y type)
+  (tile-set-type (map-tile-at map x y) type))
+
+(defun map-tile-type (map x y)
+  (tile-type (map-tile-at map x y)))
+
 (defun map-foreach (f map)
-  (dotimes (x (@ map width))
-    (dotimes (y (@ map height))
+  (dotimes (x (map-width map))
+    (dotimes (y (map-height map))
       (f x y))))
 
 (defun draw-map (map)
-  (let ((borders-func (make-array)))
-    (map-foreach (lambda (x y)
-                   (draw-tile x y
-                              (tile-type map x y)
-                              (owned map x y)))
-                 map)))
+  (map-foreach (lambda (x y)
+                 (draw-tile (map-tile-at map x y) x y))
+               map))
 
 (defun init-map ()
-  (setq *map* (new-map)))
+  (setq *map* (new-map))
+  t)
 
 ;;; Game
 (defun handle-click (x y)
-  (tile-handle-click (tile-type *map* x y) *map* x y))
+  (tile-handle-click (map-tile-at *map* x y) *map* x y))
 
 (defun clear ()
   ((@ *context* clear-rect) 0 0 ((@ *canvas* width)) ((@ *canvas* height)))
