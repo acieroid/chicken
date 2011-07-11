@@ -155,22 +155,29 @@
 (defun make-city (x y)
   (create type "city" :name (make-city-name) :x x :y y))
 
+(defun check-adjacent-cases (fun map x y)
+  (try
+   (progn
+     (dolist (pos-x (list (- x 1) x (+ x 1)))
+       (dolist (pos-y (list (- y 1) y (+ y 1)))
+         (when (and (not (and (= pos-x x) (= pos-y y)))
+                    (>= pos-x 0) (>= pos-y 0)
+                    (< pos-x (@ map width))
+                    (< pos-y (@ map height)))
+           (unless (fun pos-x pos-y)
+             (throw "end")))))
+     true)
+   (:catch (error)
+     (return false)))
+)
+
 (defun can-place-city (map x y)
   (flet ((check (x y)
            (if (and (>= x 0) (>= y 0)
                     (< x (@ map width)) (< y (@ map height)))
-               (when (= (tile-type map x y) :city)
-                 (throw "can't place")))))
-    (try
-     (mapcar check
-             (list x x x
-                   (- x 1) (- x 1) (- x 1)
-                   (+ x 1) (+ x 1) (+ x 1))
-             (list y (- y 1) (+ y 1)
-                   y (- y 1) (+ y 1)
-                   y (- y 1) (+ y 1)))
-     (:catch (error)
-       false))))
+               (not (= (tile-type map x y) :city)))))
+    (and (not (= (tile-type map x y) :city))
+        (check-adjacent-cases check map x y))))
 
 (defun add-cities (map)
   (labels ((helper (n)
