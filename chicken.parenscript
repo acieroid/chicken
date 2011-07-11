@@ -130,13 +130,12 @@
   (clear-actions)
   (case type
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
-     (when (= *city* *home*)
+     (when (and (= *city* *home*) (can-buy-field map x y))
        (add-action "buy" "Buy (costs 10)"
                    (lambda ()
                      (when (pay 10)
                        (message "Buying field")
                        (set-owned map x y)
-                       (next-turn)
                        (redraw))
                      (clear-actions)))))
     (:city
@@ -168,8 +167,7 @@
              (throw "end")))))
      true)
    (:catch (error)
-     (return false)))
-)
+     (return false))))
 
 (defun can-place-city (map x y)
   (flet ((check (x y)
@@ -178,6 +176,15 @@
                (not (= (tile-type map x y) :city)))))
     (and (not (= (tile-type map x y) :city))
         (check-adjacent-cases check map x y))))
+
+(defun can-buy-field (map x y)
+  (and
+   (not (owned map x y))
+   (not (check-adjacent-cases (lambda (x y)
+                                (not
+                                 (or (= (tile-type map x y) :home)
+                                     (owned map x y))))
+                              map x y))))
 
 (defun add-cities (map)
   (labels ((helper (n)
