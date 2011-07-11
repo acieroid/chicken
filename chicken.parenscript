@@ -43,7 +43,7 @@
   (let ((result-array (make-array)))
     (if (= 1 (length as))
         (dolist (element (aref as 0))
-          (result-array.push (fun element)))
+          ((@ result-array push) (fun element)))
         (dotimes (i (length (aref as 0)))
           (let ((args-array (mapcar (lambda (a) (return (aref a i))) as)))
             (result-array.push (fun.apply fun args-array)))))
