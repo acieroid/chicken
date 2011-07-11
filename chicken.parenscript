@@ -12,6 +12,7 @@
 (defvar *chickens*)
 (defvar *chickens-placed*)
 (defvar *transport*)
+(defvar *inventory*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -148,6 +149,26 @@
                          (when (sell-chickens 1 n)
                            (message "Sold " n " chickens at " (@ *city* name))))
                        "#static-actions")))
+
+;;; Inventory
+(defun init-inventory ()
+  (setf *inventory* (make-array)))
+
+(defmacro inventory-add (type number)
+  `(if (in ,type *inventory*)
+       (incf (@ *inventory* ,type) ,number)
+       (setf (@ *inventory* ,type) ,number)))
+
+(defmacro inventory-get (type)
+  `(@ *inventory* ,type))
+
+(defmacro inventory-remove (type number)
+  `(if (or (not (in ,type *inventory))
+          (> ,number (inventory-get ,type)))
+      (progn
+        (message "You don't have enough " ,type " in your inventory")
+        false)
+      (decf (@ *inventory* ,type) ,number)))
 
 ;;; Money
 (defun pay (price)
