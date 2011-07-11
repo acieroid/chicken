@@ -155,16 +155,30 @@
       t))
 
 (defun sell-chickens (price number)
-  (when (remove-chickens number)
-    (earn (* price number))
-    (decf *chickens* number)
-    (display-infos)))
+  (if (remove-chickens number)
+      (progn
+        (earn (* price number))
+        (decf *chickens* number)
+        (display-infos))
+      false))
 
 (defun put-chickens (number tile)
-  (when (remove-chickens number)
-    (tile-set-chickens (+ (tile-chickens tile) number))
-    (decf *chickens* number)
-    (display-infos)))
+  (if (remove-chickens number)
+      (progn
+        (tile-set-chickens tile (+ (tile-chickens tile) number))
+        (decf *chickens* number)
+        (display-infos))
+      false))
+
+(defun take-chickens (number tile)
+  (if (> number (tile-chickens tile))
+      (progn
+        (message "Not enough chickens")
+        false)
+      (progn
+        (tile-set-chickens tile (- (tile-chickens tile) number))
+        (incf *chickens* number)
+        (display-infos))))
 
 (defun init-chickens ()
   (setf *chickens* +initial-chickens+))
@@ -192,11 +206,17 @@
 (defun tile-set-owned (tile &optional (status t))
   (setf (@ tile owned) status))
 
-(defun tile-city (tile city)
+(defun tile-city (tile)
   (@ tile city))
 
 (defun tile-set-city (tile city)
   (setf (@ tile city) city))
+
+(defun tile-chickens (tile)
+  (@ tile chickens))
+
+(defun tile-set-chickens (tile number)
+  (setf (@ tile chickens) number))
 
 (defun tile-position (pos)
   (floor (/ pos +tile-size+)))
@@ -219,7 +239,8 @@
   (clear-actions)
   (case (tile-type tile)
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
-     (if (tile-owned-p tile)
+     (when (= *city* *home*)
+       (when (tile-owned-p tile)
          (add-action "sell" "Sell at 10"
                      (lambda ()
                        (earn 10)
@@ -227,14 +248,25 @@
                        (tile-set-owned tile false)
                        (redraw)
                        (clear-actions)))
-         (when (and (= *city* *home*) (can-buy-field map x y))
-           (add-action "buy" "Buy (costs 10)"
-                       (lambda ()
-                         (when (pay 10)
-                           (message "Buying field")
-                           (tile-set-owned tile x y)
-                           (redraw))
-                         (clear-actions))))))
+         (add-number-action "put" "Put chickens"
+                            (lambda (n)
+                              (when (put-chickens n tile)
+                                (message "Placed " n " chickens")
+                                (clear-actions))))
+         (add-number-action "take" (stringify "Take chickens (max: "
+                                              (tile-chickens tile) ")")
+                            (lambda (n)
+                              (when (take-chickens n tile)
+                                (message "Taken " n " chickens")
+                                (clear-actions)))))
+       (when (can-buy-field map x y)
+         (add-action "buy" "Buy (costs 10)"
+                     (lambda ()
+                       (when (pay 10)
+                         (message "Buying field")
+                         (tile-set-owned tile x y)
+                         (redraw))
+                       (clear-actions))))))
     (:city
      (let ((city (tile-city tile)))
        (add-action "go" (stringify "Go to " (@ city name))
