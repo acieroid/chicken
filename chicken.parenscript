@@ -38,7 +38,8 @@
 (defvar +initial-chickens+ 0)
 (defvar +initial-transport+ (first (first +transports+)))
 (defvar +city-factor+ 0.005)
-(defvar +earn-ratio+ 0.1)
+(defvar +earn-ratio+ 0.3)
+(defvar +price-variation-ratio+ 0.2)
 
 ;;; Utils
 (defun first (l)
@@ -126,6 +127,17 @@
                 (init-game))
               "#static-actions")
   (unless (= *city* *home*)
+    (when (transport-available)
+      (let ((transport (random-transport)))
+        (add-action "buy-transport" (stringify "Buy a " transport
+                                               " (" (transport-price transport)
+                                               ")")
+                    (lambda ()
+                      (when (pay (transport-price transport))
+                        (message "You just bought a " transport)
+                        (setf *transport* transport)
+                        (update-static-actions)))
+                    "#static-actions")))
     (add-number-action "buy-chickens" "Buy chickens"
                        (lambda (n)
                          (when (buy-chickens 1 n)
@@ -151,12 +163,27 @@
 (defun earn (money)
   (incf *money* money))
 
+(defun price-variation (price)
+  (let ((variation (random (* price +price-variation-ratio+))))
+    (if (= (random 2) 1)
+        (+ price variation)
+        (- price variation))))
+
 (defun init-money ()
   (setf *money* +initial-money+))
 
 ;;; Transports
 (defun transport-size (transport)
   (assoc transport +transports+))
+
+(defun transport-price (transport)
+  (price-variation (assoc transport +transports+)))
+
+(defun transport-available ()
+  (= (random 2) 1))
+
+(defun random-transport ()
+  (first (random-element +transports+)))
 
 (defun init-transports ()
   (setf *transport* +initial-transport+))
@@ -303,18 +330,19 @@
                          (tile-set-owned tile x y)
                          (redraw))
                        (clear-actions))))))
-    (:city
-     (let ((city (tile-city tile)))
-       (add-action "go" (stringify "Go to " (@ city name))
-                   (lambda ()
-                     (go-to city)
-                     (clear-actions)))))
     (:home
      (unless (= *city* *home*)
        (add-action "go" "Go home"
                    (lambda ()
                      (go-to *home*)
-                     (clear-actions)))))))
+                     (clear-actions)))))
+    (:city
+     (let ((city (tile-city tile)))
+       (unless (= *city* city)
+         (add-action "go" (stringify "Go to " (@ city name))
+                     (lambda ()
+                       (go-to city)
+                       (clear-actions))))))))
 
 ;;; Cities
 (defun make-city (x y)
