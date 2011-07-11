@@ -5,11 +5,9 @@
 (defvar *canvas*)
 (defvar *context*)
 (defvar *map*)
-(defvar *money*)
 (defvar *turn*)
 (defvar *city*)
 (defvar *home*)
-(defvar *chickens*)
 (defvar *chickens-placed*)
 (defvar *transport*)
 (defvar *inventory*)
@@ -81,7 +79,7 @@
 (defun next-turn ()
   (let ((gain (floor (* *chickens-placed* +earn-ratio+))))
     (setf *turn* (+ *turn* 1))
-    (incf *money* gain)
+    (earn gain)
     (message "Starting turn " *turn* ", you earned " gain)
     (update-static-actions)
     (display-infos)))
@@ -152,7 +150,9 @@
 
 ;;; Inventory
 (defun init-inventory ()
-  (setf *inventory* (make-array)))
+  ;; We have to initialize at least one value
+  (setf *inventory* (make-array))
+  (setf (@ *inventory* "foo") 0))
 
 (defmacro inventory-add (type number)
   `(if (in ,type *inventory*)
@@ -162,27 +162,30 @@
 (defmacro inventory-get (type)
   `(@ *inventory* ,type))
 
-(defmacro inventory-remove (type number)
-  `(if (or (not (in ,type *inventory))
-          (> ,number (inventory-get ,type)))
-      (progn
-        (message "You don't have enough " ,type " in your inventory")
-        false)
-      (decf (@ *inventory* ,type) ,number)))
+(defmacro inventory-remove (type number
+                            &optional (error-message
+                                       (stringify "You don't have enough "
+                                                  type " in your inventory")))
+  `(if (or (not (in ,type *inventory*))
+           (> ,number (inventory-get ,type)))
+       (progn
+         (message error-message)
+         false)
+       (decf (@ *inventory* ,type) ,number)))
 
 ;;; Money
 (defun pay (price)
-  (if (> price *money*)
+  (if (> price (inventory-get :money))
       (progn
         (message "You can't afford that !")
         false)
       (progn
-        (decf *money* price)
+        (inventory-remove :money price)
         (display-infos)
         t)))
 
 (defun earn (money)
-  (incf *money* money))
+  (inventory-add :money money))
 
 (defun price-variation (price)
   (let ((variation (random (* price +price-variation-ratio+))))
@@ -191,7 +194,7 @@
         (- price variation))))
 
 (defun init-money ()
-  (setf *money* +initial-money+))
+  (inventory-add :money +initial-money+))
 
 ;;; Transports
 (defun transport-size (transport)
@@ -210,8 +213,11 @@
   (setf *transport* +initial-transport+))
 
 ;;; Chickens
+(defun get-chickens ()
+  (inventory-get :chickens))
+
 (defun enough-room-p (number)
-  (if (> (+ *chickens* number)
+  (if (> (+ (get-chickens) number)
            (transport-size *transport*))
       (progn
         (message "Not enough room for " number " chickens")
@@ -221,12 +227,12 @@
 (defun buy-chickens (price number)
   (if (and (enough-room-p number)
            (pay (* price number)))
-      (progn (incf *chickens* number)
+      (progn (inventory-add :chickens number)
              (display-infos))
       false))
 
 (defun remove-chickens (number)
-  (if (> number *chickens*)
+  (if (> number (get-chickens))
       (progn
         (message "Not enough chickens")
         false)
@@ -236,7 +242,7 @@
   (if (remove-chickens number)
       (progn
         (earn (* price number))
-        (decf *chickens* number)
+        (inventory-remove :chickens number)
         (display-infos))
       false))
 
@@ -244,7 +250,7 @@
   (if (remove-chickens number)
       (progn
         (tile-set-chickens tile (+ (tile-chickens tile) number))
-        (decf *chickens* number)
+        (inventory-remove :chickens number)
         (incf *chickens-placed* number)
         (display-infos))
       false))
@@ -258,13 +264,13 @@
         (if (enough-room-p number)
             (progn
               (tile-set-chickens tile (- (tile-chickens tile) number))
-              (incf *chickens* number)
+              (inventory-add :chickens number)
               (decf *chickens-placed* number)
               (display-infos))
             false))))
 
 (defun init-chickens ()
-  (setf *chickens* +initial-chickens+)
+  (inventory-add :chickens +initial-chickens+)
   (setf *chickens-placed* 0))
 
 ;;; Tiles
@@ -509,9 +515,9 @@
   ((@ ($ "#infos") html) ""))
 
 (defun display-infos ()
-  ((@ ($ "#infos") html) (stringify "Money: " *money* " - "
+  ((@ ($ "#infos") html) (stringify "Money: " (inventory-get :money) " - "
                                     "Turn: " *turn* " - "
-                                    "Chickens: " *chickens* "/"
+                                    "Chickens: " (inventory-get :chickens) "/"
                                     (transport-size *transport*) " - "
                                     "Chickens placed: " *chickens-placed* " - "
                                     "Transport: " *transport* " - "
@@ -531,6 +537,7 @@
 
 (defun init-game ()
   (init-messages)
+  (init-inventory)
   (init-money)
   (init-turns)
   (init-chickens)
