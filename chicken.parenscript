@@ -64,7 +64,8 @@
 ;;; Turns
 (defun next-turn ()
   (setf *turn* (+ *turn* 1))
-  (message (stringify "Starting turn " *turn*)))
+  (message (stringify "Starting turn " *turn*))
+  (display-infos))
 
 (defun init-turns ()
   (setf *turn* 0))
