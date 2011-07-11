@@ -11,6 +11,7 @@
 (defvar *home*)
 (defvar *chickens*)
 (defvar *chickens-placed*)
+(defvar *transport*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -23,9 +24,19 @@
     (:mud-3 "#364")
     (:city "#00F")
     (:home "#F00")))
+(defvar +transports+
+  '(("Bicycle" 10)
+    ("Motorcycle" 20)
+    ("Mini" 40)
+    ("Car" 60)
+    ("Van" 100)
+    ("Truck" 200)
+    ("Jet" 300)
+    ("Cargo plane" 500)))
 (defvar +tile-size+ 20)
 (defvar +initial-money+ 100)
 (defvar +initial-chickens+ 0)
+(defvar +initial-transport+ (first (first +transports+)))
 (defvar +city-factor+ 0.005)
 (defvar +earn-ratio+ 0.1)
 
@@ -143,12 +154,27 @@
 (defun init-money ()
   (setf *money* +initial-money+))
 
+;;; Transports
+(defun transport-size (transport)
+  (assoc transport +transports+))
+
+(defun init-transports ()
+  (setf *transport* +initial-transport+))
+
 ;;; Chickens
-(defun buy-chickens (price number)
-  (if (pay (* price number))
+(defun enough-room-p (number)
+  (if (> (+ *chickens* number)
+           (transport-size *transport*))
       (progn
-        (incf *chickens* number)
-        (display-infos))
+        (message "Not enough room for " number " chickens")
+        (return false))
+      t))
+
+(defun buy-chickens (price number)
+  (if (and (enough-room-p number)
+           (pay (* price number)))
+      (progn (incf *chickens* number)
+             (display-infos))
       false))
 
 (defun remove-chickens (number)
@@ -181,10 +207,13 @@
         (message "Not enough chickens")
         false)
       (progn
-        (tile-set-chickens tile (- (tile-chickens tile) number))
-        (incf *chickens* number)
-        (decf *chickens-placed* number)
-        (display-infos))))
+        (if (enough-room-p number)
+            (progn
+              (tile-set-chickens tile (- (tile-chickens tile) number))
+              (incf *chickens* number)
+              (decf *chickens-placed* number)
+              (display-infos))
+            false))))
 
 (defun init-chickens ()
   (setf *chickens* +initial-chickens+)
@@ -433,8 +462,10 @@
 (defun display-infos ()
   ((@ ($ "#infos") html) (stringify "Money: " *money* " - "
                                     "Turn: " *turn* " - "
-                                    "Chickens: " *chickens* " - "
+                                    "Chickens: " *chickens* "/"
+                                    (transport-size *transport*) " - "
                                     "Chickens placed: " *chickens-placed* " - "
+                                    "Transport: " *transport* " - "
                                     "Location: " (@ *city* name))))
 
 (defun pre-init ()
@@ -454,6 +485,7 @@
   (init-money)
   (init-turns)
   (init-chickens)
+  (init-transports)
   (init-map)
   (init-cities)
   (clear-actions)
