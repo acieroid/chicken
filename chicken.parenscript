@@ -10,6 +10,7 @@
 (defvar *city*)
 (defvar *home*)
 (defvar *chickens*)
+(defvar *chickens-placed*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -26,6 +27,7 @@
 (defvar +initial-money+ 100)
 (defvar +initial-chickens+ 0)
 (defvar +city-factor+ 0.005)
+(defvar +earn-ratio+ 0.1)
 
 ;;; Utils
 (defun first (l)
@@ -64,10 +66,12 @@
 
 ;;; Turns
 (defun next-turn ()
-  (setf *turn* (+ *turn* 1))
-  (message "Starting turn " *turn*)
-  (update-static-actions)
-  (display-infos))
+  (let ((gain (floor (* *chickens-placed* +earn-ratio+))))
+    (setf *turn* (+ *turn* 1))
+    (incf *money* gain)
+    (message "Starting turn " *turn* ", you earned " gain)
+    (update-static-actions)
+    (display-infos)))
 
 (defun init-turns ()
   (setf *turn* 0))
@@ -129,12 +133,12 @@
         (message "You can't afford that !")
         false)
       (progn
-        (setf *money* (- *money* price))
+        (decf *money* price)
         (display-infos)
         t)))
 
 (defun earn (money)
-  (setf *money* (+ *money* money)))
+  (incf *money* money))
 
 (defun init-money ()
   (setf *money* +initial-money+))
@@ -167,6 +171,7 @@
       (progn
         (tile-set-chickens tile (+ (tile-chickens tile) number))
         (decf *chickens* number)
+        (incf *chickens-placed* number)
         (display-infos))
       false))
 
@@ -178,10 +183,12 @@
       (progn
         (tile-set-chickens tile (- (tile-chickens tile) number))
         (incf *chickens* number)
+        (decf *chickens-placed* number)
         (display-infos))))
 
 (defun init-chickens ()
-  (setf *chickens* +initial-chickens+))
+  (setf *chickens* +initial-chickens+)
+  (setf *chickens-placed* 0))
 
 ;;; Tiles
 (defun random-tile ()
@@ -427,6 +434,7 @@
   ((@ ($ "#infos") html) (stringify "Money: " *money* " - "
                                     "Turn: " *turn* " - "
                                     "Chickens: " *chickens* " - "
+                                    "Chickens placed: " *chickens-placed* " - "
                                     "Location: " (@ *city* name))))
 
 (defun pre-init ()
