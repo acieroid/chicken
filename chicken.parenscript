@@ -65,8 +65,8 @@
     (return result-array)))
 
 (defun get-time ()
-  ;; The - before date is necessary here to have a capital in compiled code
-  (let* ((date (new -date))
+  ;; The + before date is necessary here to have a capital in compiled code
+  (let* ((date (new +date))
          (hours ((@ date get-hours)))
          (minutes ((@ date get-minutes)))
          (seconds ((@ date get-seconds))))
@@ -127,7 +127,7 @@
               "#static-actions")
   (unless (= *city* *home*)
     (when (transport-available)
-      (let ((transport (random-transport))
+      (let* ((transport (random-transport))
             (price (transport-price transport)))
         (add-action "buy-transport" (stringify "Buy a " transport
                                                " (" price ")")
@@ -435,7 +435,6 @@
       (message "Home sweet home")
       (message "Going to " (@ city name)))
   (setf *city* city)
-  (display-infos)
   (next-turn))
 
 (defun init-cities ()
