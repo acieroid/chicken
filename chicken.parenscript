@@ -32,7 +32,7 @@
     ("Truck" 200)
     ("Jet" 300)
     ("Cargo plane" 500)))
-(defvar +tile-size+ 20)
+(defvar +tile-size+ 10)
 (defvar +initial-money+ 100)
 (defvar +initial-chickens+ 0)
 (defvar +initial-transport+ (first (first +transports+)))
@@ -152,6 +152,8 @@
 
 ;;; Inventory
 (defun init-inventory ()
+  ((@ ($ "#inventory") css) "float" "right")
+  ((@ ($ "#inventory") css) "margin-right" "10%")
   (setf *inventory* (make-array)))
 
 (defun inventory-add (type number)
@@ -172,6 +174,19 @@
          (message error-message)
          false)
        (decf (aref *inventory* type) number)))
+
+(defun display-inventory ()
+  ((@ ($ "#inventory") html) "<h3>Inventory</h3>")
+  (let ((l (list
+            (stringify "<b>Money:</b> " (inventory-get :money))
+            (stringify "<b>Chickens:</b> " (inventory-get :chickens)))))
+    (dolist (transport +transports+)
+      (when (defined (inventory-get (first transport)))
+        ((@ l push) (stringify "<b>" (first transport) ":</b> "
+                               (inventory-get (first transport))))))
+    (mapcar (lambda (str)
+              ((@ ($ "#inventory") append) (stringify str "<br/>")))
+            l)))
 
 ;;; Money
 (defun pay (price)
@@ -210,6 +225,7 @@
   (first (random-element +transports+)))
 
 (defun init-transports ()
+  (inventory-add +initial-transport+)
   (setf *transport* +initial-transport+))
 
 ;;; Chickens
