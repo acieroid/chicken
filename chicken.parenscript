@@ -127,15 +127,17 @@
               "#static-actions")
   (unless (= *city* *home*)
     (when (transport-available)
-      (let ((transport (random-transport)))
+      (let ((transport (random-transport))
+            (price (transport-price transport)))
         (add-action "buy-transport" (stringify "Buy a " transport
-                                               " (" (transport-price transport)
-                                               ")")
+                                               " (" price ")")
                     (lambda ()
-                      (when (pay (transport-price transport))
+                      (when (pay price)
                         (message "You just bought a " transport)
+                        (inventory-add transport 1)
                         (setf *transport* transport)
-                        (update-static-actions)))
+                        (update-static-actions)
+                        (display-infos)))
                     "#static-actions")))
     (add-number-action "buy-chickens" "Buy chickens"
                        (lambda (n)
@@ -150,28 +152,26 @@
 
 ;;; Inventory
 (defun init-inventory ()
-  ;; We have to initialize at least one value
-  (setf *inventory* (make-array))
-  (setf (@ *inventory* "foo") 0))
+  (setf *inventory* (make-array)))
 
-(defmacro inventory-add (type number)
-  `(if (in ,type *inventory*)
-       (incf (@ *inventory* ,type) ,number)
-       (setf (@ *inventory* ,type) ,number)))
+(defun inventory-add (type number)
+  (if (defined (inventory-get type))
+       (incf (aref *inventory* type) number)
+       (setf (aref *inventory* type) number)))
 
-(defmacro inventory-get (type)
-  `(@ *inventory* ,type))
+(defun inventory-get (type)
+  (aref *inventory* type))
 
-(defmacro inventory-remove (type number
-                            &optional (error-message
-                                       (stringify "You don't have enough "
-                                                  type " in your inventory")))
-  `(if (or (not (in ,type *inventory*))
-           (> ,number (inventory-get ,type)))
+(defun inventory-remove (type number
+                         &optional (error-message
+                                    (stringify "You don't have enough "
+                                               type " in your inventory")))
+  (if (or (undefined (inventory-get type))
+          (> number (inventory-get type)))
        (progn
          (message error-message)
          false)
-       (decf (@ *inventory* ,type) ,number)))
+       (decf (aref *inventory* type) number)))
 
 ;;; Money
 (defun pay (price)
