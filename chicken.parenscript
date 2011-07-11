@@ -131,20 +131,26 @@
   (clear-actions)
   (case type
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
-     (add-action "buy" "Buy (costs 10)"
-                 (lambda ()
-                   (when (pay 10)
-                     (message "Buying field")
-                     (set-owned map x y)
-                     (next-turn)
-                     (redraw))
-                   (clear-actions))))
-    ((:city :home)
+     (when (= *city* *home*)
+       (add-action "buy" "Buy (costs 10)"
+                   (lambda ()
+                     (when (pay 10)
+                       (message "Buying field")
+                       (set-owned map x y)
+                       (next-turn)
+                       (redraw))
+                     (clear-actions)))))
+    (:city
      (let ((city (city map x y)))
        (add-action "go" (stringify "Go to " (@ city name))
                    (lambda ()
                      (go-to city)
-                     (clear-actions)))))))
+                     (clear-actions)))))
+    (:home
+     (add-action "go" (stringify "Go home")
+                 (lambda ()
+                   (go-to *home*)
+                   (clear-actions))))))
 
 ;;; Cities
 (defun make-city (x y)
@@ -188,7 +194,9 @@
     (helper)))
 
 (defun go-to (city)
-  (message (stringify "Going to " (@ city name)))
+  (if (= city *home*)
+      (message "Home sweet home")
+      (message (stringify "Going to " (@ city name))))
   (setf *city* city)
   (display-infos)
   (next-turn))
