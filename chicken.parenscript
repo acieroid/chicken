@@ -130,14 +130,22 @@
   (clear-actions)
   (case type
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
-     (when (and (= *city* *home*) (can-buy-field map x y))
-       (add-action "buy" "Buy (costs 10)"
-                   (lambda ()
-                     (when (pay 10)
-                       (message "Buying field")
-                       (set-owned map x y)
-                       (redraw))
-                     (clear-actions)))))
+     (if (owned map x y)
+         (add-action "sell" "Sell at 10"
+                     (lambda ()
+                       (earn 10)
+                       (message "Sold field")
+                       (set-owned map x y false)
+                       (redraw)
+                       (clear-actions)))
+         (when (and (= *city* *home*) (can-buy-field map x y))
+           (add-action "buy" "Buy (costs 10)"
+                       (lambda ()
+                         (when (pay 10)
+                           (message "Buying field")
+                           (set-owned map x y)
+                           (redraw))
+                         (clear-actions))))))
     (:city
      (let ((city (city map x y)))
        (add-action "go" (stringify "Go to " (@ city name))
@@ -233,7 +241,7 @@
   (aref (@ map cities) x y))
 
 (defun set-owned (map x y &optional (status t))
-  (setf (aref (@ map owned) x y) t))
+  (setf (aref (@ map owned) x y) status))
 
 (defun owned (map x y)
   (aref (@ map owned) x y))
