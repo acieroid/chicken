@@ -146,11 +146,6 @@
 
 (defun update-static-actions ()
   ((@ ($ "#static-actions") html) "")
-  (add-action "New Game"
-              (lambda ()
-                (message "New game started")
-                (init-game))
-              "#static-actions")
   (unless (= *city* *home*)
     (when (transport-available)
       (let* ((transport (random-transport))
@@ -650,6 +645,7 @@
   (draw-map *map*))
 
 (defun init-game ()
+  (message "Game started")
   (init-messages)
   (init-inventory)
   (init-prices)
@@ -669,4 +665,4 @@
   (pre-init)
   (clear)
   (clear-actions)
-  (update-static-actions))
+  (init-game))
