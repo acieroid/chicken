@@ -12,7 +12,8 @@
 (defvar *transport*)
 (defvar *transport-unavailable*)
 (defvar *inventory*)
-(defvar *pricse*)
+(defvar *mean-prices*)
+(defvar *prices*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -34,6 +35,17 @@
     ("Truck" 200)
     ("Jet" 300)
     ("Cargo plane" 500)))
+(defvar +initial-prices+
+  '((:chicken 5)
+    (:field 100)
+    ("Bicycle" 75)
+    ("Motorcycle" 200)
+    ("Mini" 500)
+    ("Car" 700)
+    ("Van" 1000)
+    ("Truck" 1500)
+    ("Jet" 4000)
+    ("Cargo plane" 10000)))
 (defvar +tile-size+ 10)
 (defvar +initial-money+ 1000)
 (defvar +initial-chickens+ 0)
@@ -41,7 +53,7 @@
 (defvar +city-factor+ 0.005)
 (defvar +earn-ratio+ 0.2)
 (defvar +price-variation-ratio+ 0.2)
-(defvar +field-price+ 100)
+(defvar +price-max-variation+ 5)
 
 ;;; Utils
 (defun first (l)
@@ -140,7 +152,7 @@
   (unless (= *city* *home*)
     (when (transport-available)
       (let* ((transport (random-transport))
-            (price (transport-price transport)))
+            (price (get-price transport)))
         (add-action (stringify "Buy a " transport
                                                " (" price ")")
                     (lambda ()
@@ -151,16 +163,19 @@
                         (update-static-actions)
                         (display-infos)))
                     "#static-actions")))
-    (add-number-action "Buy chickens"
-                       (lambda (n)
-                         (when (buy-chickens 1 n)
-                           (message "Bought " n " chickens at " (@ *city* name))))
-                       "#static-actions")
-    (add-number-action "Sell chickens"
-                       (lambda (n)
-                         (when (sell-chickens 1 n)
-                           (message "Sold " n " chickens at " (@ *city* name))))
-                       "#static-actions")))
+    (let ((price (get-price :chicken)))
+      (add-number-action (stringify "Buy chickens (" price ")")
+                         (lambda (n)
+                           (when (buy-chickens 1 n)
+                             (message "Bought " n " chickens at " (@ *city* name)
+                                      " for " (* price n))))
+                         "#static-actions")
+      (add-number-action (stringify "Sell chickens (" price ")")
+                         (lambda (n)
+                           (when (sell-chickens 1 n)
+                             (message "Sold " n " chickens at " (@ *city* name)
+                                      " for " (* price n))))
+                         "#static-actions"))))
 
 ;;; Inventory
 (defun init-inventory ()
@@ -206,7 +221,7 @@
              (or (not (= *transport* transport))
                  (and (= *transport* transport)
                       (> (inventory-get transport) 1))))
-    (let ((price (transport-price transport)))
+    (let ((price (get-price transport)))
       (add-number-action (stringify "Sell (" price ")")
                          (lambda (n)
                            (if (and (= *transport* transport)
@@ -257,23 +272,34 @@
 
 ;;; Prices
 (defun reinit-prices ()
+  (vary-prices)
   (setf *prices* (make-array)))
 
-(defun get-price (name mean-price)
+(defun vary-prices ()
+  (dolist (elem +initial-prices+)
+    (let ((variation (random +price-max-variation+)))
+      (if (= (random 2) 1)
+          (incf (aref *mean-prices* (first elem)) variation)
+          (decf (aref *mean-prices* (second elem)) variation)))))
+
+(defun mean-price (name)
+  (aref *mean-prices* name))
+
+(defun get-price (name)
   (if (defined (aref *prices* name))
       (aref *prices* name)
-      (let ((price (price-variation mean-price)))
+      (let ((price (price-variation (mean-price name))))
         (setf (aref *prices* name) price))))
 
-(defun field-price ()
-  (get-price :field +field-price+))
+(defun init-prices ()
+  (setf *mean-prices* (make-array))
+  (setf *prices* (make-array))
+  (dolist (elem +initial-prices+)
+    (setf (aref *mean-prices* (first elem)) (second elem))))
 
 ;;; Transports
 (defun transport-size (transport)
   (assoc transport +transports+))
-
-(defun transport-price (transport)
-  (get-price transport (* (assoc transport +transports+) 10)))
 
 (defun transport-available ()
   (if (and (not *transport-unavailable*)
@@ -408,7 +434,7 @@
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
      (when (= *city* *home*)
        (when (tile-owned-p tile)
-         (let ((price (field-price)))
+         (let ((price (get-price :field)))
            (add-action (stringify "Sell (" price ")")
                        (lambda ()
                          (earn price)
@@ -428,7 +454,7 @@
                                 (message "Taken " n " chickens")
                                 (clear-actions)))))
        (when (can-buy-field map x y)
-         (let ((price (field-price))))
+         (let ((price (get-price :field))))
          (add-action (stringify "Buy (" price ")")
                      (lambda ()
                        (when (pay price)
@@ -617,7 +643,7 @@
 (defun init-game ()
   (init-messages)
   (init-inventory)
-  (reinit-prices)
+  (init-prices)
   (init-money)
   (init-turns)
   (init-chickens)
