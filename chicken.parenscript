@@ -64,6 +64,11 @@
             ((@ result-array push) (fun.apply fun args-array)))))
     (return result-array)))
 
+(defvar *gensym-counter* 0)
+(defun gensym (&optional (prefix "g"))
+  (incf *gensym-counter*)
+  (stringify prefix *gensym-counter*))
+
 (defun get-time ()
   ;; The + before date is necessary here to have a capital in compiled code
   (let* ((date (new +date))
@@ -91,15 +96,17 @@
 (defun clear-actions ()
   ((@ ($ "#actions") html) ""))
 
-(defun add-action (id name fun &optional (type "#actions"))
-  ((@ ($ type) append)
-   (stringify
-    (ps-html ((:input :type "button" :id id :value name)))
-    (unless (= type "#inventory") "<br/>")))
-  ((@ ($ (stringify "#" id)) click) fun))
+(defun add-action (name fun &optional (type "#actions"))
+  (let ((id (gensym)))
+    ((@ ($ type) append)
+     (stringify
+      (ps-html ((:input :type "button" :id id :value name)))
+      (unless (= type "#inventory") "<br/>")))
+    ((@ ($ (stringify "#" id)) click) fun)))
 
-(defun add-number-action (id name fun &optional (type "#actions"))
-  (let ((text-id (stringify id "-text")))
+(defun add-number-action (name fun &optional (type "#actions"))
+  (let ((id (gensym))
+        (text-id (gensym)))
     ((@ ($ type) append)
      (stringify
       (ps-html ((:input :type "text" :id text-id :value 0)))
@@ -120,7 +127,7 @@
 
 (defun update-static-actions ()
   ((@ ($ "#static-actions") html) "")
-  (add-action "new" "New Game"
+  (add-action "New Game"
               (lambda ()
                 (message "New game started")
                 (init-game))
@@ -129,7 +136,7 @@
     (when (transport-available)
       (let* ((transport (random-transport))
             (price (transport-price transport)))
-        (add-action "buy-transport" (stringify "Buy a " transport
+        (add-action (stringify "Buy a " transport
                                                " (" price ")")
                     (lambda ()
                       (when (pay price)
@@ -139,12 +146,12 @@
                         (update-static-actions)
                         (display-infos)))
                     "#static-actions")))
-    (add-number-action "buy-chickens" "Buy chickens"
+    (add-number-action "Buy chickens"
                        (lambda (n)
                          (when (buy-chickens 1 n)
                            (message "Bought " n " chickens at " (@ *city* name))))
                        "#static-actions")
-    (add-number-action "sell-chickens" "Sell chickens"
+    (add-number-action "Sell chickens"
                        (lambda (n)
                          (when (sell-chickens 1 n)
                            (message "Sold " n " chickens at " (@ *city* name))))
@@ -174,15 +181,17 @@
        (progn
          (message error-message)
          false)
-       (when (and (= (decf (aref *inventory* type) number) 0) remove-p)
+       (progn
+         (when (and (= (decf (aref *inventory* type) number) 0) remove-p)
            ;; Don't keep a "0" if remove-p is true
-           (setf (aref *inventory* type) undefined))))
+           (setf (aref *inventory* type) undefined))
+         t)))
 
 (defun inventory-display-transport (transport)
   ((@ ($ "#inventory") append) (stringify "<b>" transport ":</b> "
                                           (inventory-get transport)))
   (unless (= *transport* transport)
-    (add-action (stringify "use-" transport) "Use"
+    (add-action "Use"
                 (lambda ()
                   (setf *transport* transport)
                   (message "You're now using your " transport)
@@ -193,8 +202,7 @@
                  (and (= *transport* transport)
                       (> (inventory-get transport) 1))))
     (let ((price (transport-price transport)))
-      (add-number-action (stringify "sell-" transport)
-                         (stringify "Sell (" price ")")
+      (add-number-action (stringify "Sell (" price ")")
                          (lambda (n)
                            (when (inventory-remove transport n :remove-p t)
                              (earn (* n price))
@@ -375,26 +383,26 @@
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
      (when (= *city* *home*)
        (when (tile-owned-p tile)
-         (add-action "sell" "Sell at 10"
+         (add-action "Sell at 10"
                      (lambda ()
                        (earn 10)
                        (message "Sold field")
                        (tile-set-owned tile false)
                        (redraw)
                        (clear-actions)))
-         (add-number-action "put" "Put chickens"
+         (add-number-action "Put chickens"
                             (lambda (n)
                               (when (put-chickens n tile)
                                 (message "Placed " n " chickens")
                                 (clear-actions))))
-         (add-number-action "take" (stringify "Take chickens (max: "
-                                              (tile-chickens tile) ")")
+         (add-number-action (stringify "Take chickens (max: "
+                                       (tile-chickens tile) ")")
                             (lambda (n)
                               (when (take-chickens n tile)
                                 (message "Taken " n " chickens")
                                 (clear-actions)))))
        (when (can-buy-field map x y)
-         (add-action "buy" "Buy (costs 10)"
+         (add-action "Buy (costs 10)"
                      (lambda ()
                        (when (pay 10)
                          (message "Buying field")
@@ -403,14 +411,14 @@
                        (clear-actions))))))
     (:home
      (unless (= *city* *home*)
-       (add-action "go" "Go home"
+       (add-action "Go home"
                    (lambda ()
                      (go-to *home*)
                      (clear-actions)))))
     (:city
      (let ((city (tile-city tile)))
        (unless (= *city* city)
-         (add-action "go" (stringify "Go to " (@ city name))
+         (add-action (stringify "Go to " (@ city name))
                      (lambda ()
                        (go-to city)
                        (clear-actions))))))))
