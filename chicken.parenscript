@@ -170,8 +170,7 @@
 
 ;;; Inventory
 (defun init-inventory ()
-  ((@ ($ "#inventory") css) "float" "right")
-  ((@ ($ "#inventory") css) "margin-right" "10%")
+  ((@ ($ "#inventory") css) "height" (@ *canvas* height))
   (setf *inventory* (make-array)))
 
 (defun inventory-add (type number)
@@ -633,6 +632,8 @@
   (display-inventory))
 
 (defun pre-init ()
+  ((@ *canvas* css) "float" "left")
+  ((@ *canvas* css) "margin" "10px")
   ((@ *canvas* click)
    (lambda (e)
      (handle-click
