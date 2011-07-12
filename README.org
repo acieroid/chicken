@@ -1,11 +1,11 @@
 #+EMAIL:
 Chicken - Comment jouer et post-mortem
 
-Ce jeu, réalisé dans le cadre de la 10ème édition des [[http://www.games-creators.org/wiki/Novendiales][Novendiales]],
+Ce [[http://awesom.eu/~acieroid/novendiales/chicken/chicken.html][jeu]], réalisé dans le cadre de la 10ème édition des [[http://www.games-creators.org/wiki/Novendiales][Novendiales]],
 consiste à diriger un élevage de poulet, et s'inspire du jeu [[http://en.wikipedia.org/wiki/Dopewars][Dopewars]]
 dans lequel vous incarnez un dealer de drogue, sauf qu'ici vous
 incarnez un brave fermier qui souhaite faire fortune avec l'évelage de
-poulets.
+poulets. Le code source est disponible sur [[http://github.com/acieroid/chicken][github]].
 
 * Interface
 La carte est composée de trois types de cases:

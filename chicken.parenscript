@@ -658,7 +658,7 @@
   (update-static-actions)
   (redraw)
   (message
-   "Game started, <a href=\"howto.html\">more info about this game</a> (fr)"))
+   "Game started, <a href=\"README.html\">more info about this game</a> (fr)"))
 
 (defun init ()
   (setq *canvas* ($ "#canvas"))
