@@ -1,0 +1,90 @@
+Chicken - Comment jouer et post-mortem
+
+Ce jeu, réalisé dans le cadre de la 10ème édition des [[http://www.games-creators.org/wiki/Novendiales][Novendiales]],
+consiste à diriger un élevage de poulet, et s'inspire du jeu [[http://en.wikipedia.org/wiki/Dopewars][Dopewars]]
+dans lequel vous incarnez un dealer de drogue, sauf qu'ici vous
+incarnez un brave fermier qui souhaite faire fortune avec l'évelage de
+poulets.
+
+* Interface
+La carte est composée de trois types de cases:
+  - Votre *maison* (case /rouge/): c'est à partir de là que vous pouvez
+    acheter des champs (pour autant qu'ils soient adjacents à ceux que
+    vous possédez déjà ou à votre maison), vendre des champs, placer
+    des poules sur ces champs ou les reprendre
+  - Différentes *villes* (cases /bleues/): c'est là que vous pouvez
+    acheter ou vendre des poules, ainsi que des moyens de transports
+  - Les *champs*: c'est ici que vous placerez les poules afin qu'elles
+    produisent des œufs. La collecte des œufs se fait automatiquement
+    et vous rapportera de l'argent à chaque tour. Un champ que vous
+    possédez sera encadré en /rouge/.
+* Les transports
+  - Vous avez à votre disposition plusieurs transports, que vous
+    pouvez acheter dans les villes quand ils y sont disponibles. Les
+    différents transports vous permettent de transporter plus ou moins
+    de poulets. La capacité de chaque transport est proportionelle à
+    son prix.
+* Post mortem
+** Technologies
+Le jeu a été développé durant 3 jours (du 10 au 12 juillet 2011) avec
+les outils suivants:
+  - [[http://common-lisp.net/project/parenscript/][Parenscript]], qui compile un langage proche du [[http://www.cliki.net/index][Common Lisp]] vers du
+    Javascript.
+  - Le fameux framework [[http://jquery.com/][jQuery]] pour simplifier la manipulation des
+    éléments de la page web (pour avoir un aperçu de l'utilisation de
+    jQuery avec Parenscript, regardez les quelques exemples [[http://tryparenscript.com/][ici]]).
+  - [[http://common-lisp.net/project/slime/][SLIME]] et [[https://github.com/3b/slime-proxy][slime-proxy]] pour pouvoir connecter le navigateur
+    directement à emacs.
+** Ce qui a bien été
+  - Bien qu'un peu compliqué à mettre en place, slime-proxy permet
+    vraiment un développement interactif très agréable, il n'y a pas
+    besoin de recompiler tout le code et recharger la page à chaque petite
+    modification. Au lieu de ça, on compile et envoie le bout de code
+    modifié (la fonction, ...) depuis emacs (=C-c C-c=) et le
+    changement est directement pris en compte sur la page. Ainsi, pas
+    besoin de recommencer à chaque fois une partie depuis le début à
+    chaque modification. Bien évidemment, ce mode de développement est
+    assez courant en Lisp (ou en Smalltalk), mais c'est un plaisir
+    d'amener ceci au sein de la programmation web.
+  - On pourrait croire que Parenscript est assez limité comme langage,
+    mais il est en fait assez complet et proche du Common Lisp
+    (néanmoins il y a quelques problèmes, mentionnés dans la section
+    suivante)
+  - jQuery est très pratique et assez simple à utiliser, ça évite de
+    perdre trop de temps avec des détails
+  - Le fait d'utiliser du HTML pour le rendu est assez pratique, car
+    outre la balise =canvas= utilisée pour l'aspect « graphique » (qui
+    est très limité ici, certes), on a aussi accès très facilement à
+    tout ce qui touche à la GUI, chose qui est bien moins évidente
+    lorsqu'on utilise quelque chose comme OpenGL ou la SDL.
+** Ce qui a mal été
+  - Bien que Parenscript soit assez complet, il lui manque encore
+    quelques points importants et parfois basiques, mais beaucoup de
+    ces lacunes sont en fait dues au Javascript: il n'y a qu'un seul
+    type de donnée: les =Array=. On peut faire des hash-tables
+    facilement avec, simuler les listes de façon un peu plus chiante
+    (il faut recoder les fonctions de base de manipulation de liste
+    qui n'existent pas dans Parenscript), mais ça reste assez limité
+    si on n'a pas envie de perdre trop de temps à implémenter les
+    types de bases (surtout qu'il faut tout implémenter sur base des
+    =Array=, les structures ou les classes ne sont pas
+    implémentées). Au niveau de la portée des variables, il y a aussi
+    quelques soucis. Il faut donc bien garder en tête qu'au final on
+    code en fait en Javascript (et donc il faut avoir une certaine
+    connaissance de ce langage).
+  - À chaque nouvelle "session" de développement, il faut relancer
+    slime, slime-proxy, ouvrir la page dans firefox et "compiler et
+    envoyer" chaque fichier parenscript, ce qui est assez fastidieux
+    (même si je me suis limité à deux fichiers sources). Un système de
+    "paquets" à la [[http://common-lisp.net/project/asdf/][asdf]] serait assez pratique.
+  - Au niveau du debug, c'est un peu la misère. Là où Common Lisp a
+    =trace=, =inspect=, les conditions et les restarts, Parenscript
+    n'a rien. On debug donc à coup d'=alert= ou d'ajout de texte à un
+    div destiné au =log=.
+** Conclusion
+Cette édition des Novendiales m'a permis d'un peu mieux connaître le
+monde de Javascript, jQuery, canvas et compagnie au travers de
+Parenscript. C'est un aspect assez intéressant de la programmation
+mais je pense qu'il y a encore quelques (grosses) lacunes au niveau de
+l'interactivité du développement et des moyens d'abstraires les
+données (le CLOS c'est tellement mieux que les =Array=).
