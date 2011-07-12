@@ -169,12 +169,6 @@
                            (when (buy-chickens 1 n)
                              (message "Bought " n " chickens at " (@ *city* name)
                                       " for " (* price n))))
-                         "#static-actions")
-      (add-number-action (stringify "Sell chickens (" price ")")
-                         (lambda (n)
-                           (when (sell-chickens 1 n)
-                             (message "Sold " n " chickens at " (@ *city* name)
-                                      " for " (* price n))))
                          "#static-actions"))))
 
 ;;; Inventory
@@ -234,14 +228,25 @@
                          "#inventory")))
   ((@ ($ "#inventory") append) "<br/>"))
 
+(defun inventory-display-chickens ()
+  ((@ ($ "#inventory") append) (stringify "<b>Chickens:</b> "
+                                          (inventory-get :chickens)
+                                          "/" (transport-size *transport*)))
+  (when (> (inventory-get :chickens) 0)
+    (let ((price (get-price :chicken)))
+      (add-number-action (stringify "Sell chickens (" price ")")
+                         (lambda (n)
+                           (when (sell-chickens 1 n)
+                             (message "Sold " n " chickens at " (@ *city* name)
+                                      " for " (* price n))))
+                         "#inventory")))
+  ((@ ($ "#inventory") append) "<br/>"))
+
 (defun display-inventory ()
   ((@ ($ "#inventory") html) "<h3>Inventory</h3>")
-  (let ((l (list
-            (stringify "<b>Money:</b> " (inventory-get :money))
-            (stringify "<b>Chickens:</b> " (inventory-get :chickens)))))
-    (mapcar (lambda (str)
-              ((@ ($ "#inventory") append) (stringify str "<br/>")))
-            l))
+  ((@ ($ "#inventory") append) (stringify "<b>Money:</b> "
+                                          (inventory-get :money) "<br/>"))
+  (inventory-display-chickens)
   (dolist (elem +transports+)
     (let ((transport (first elem)))
       (when (defined (inventory-get transport))
@@ -619,10 +624,7 @@
   ((@ ($ "#infos") html) ""))
 
 (defun display-infos ()
-  ((@ ($ "#infos") html) (stringify "Money: " (inventory-get :money) " - "
-                                    "Turn: " *turn* " - "
-                                    "Chickens: " (inventory-get :chickens) "/"
-                                    (transport-size *transport*) " - "
+  ((@ ($ "#infos") html) (stringify "Turn: " *turn* " - "
                                     "Chickens placed: " *chickens-placed* " - "
                                     "Transport: " *transport* " - "
                                     "Location: " (@ *city* name)))
