@@ -54,6 +54,7 @@
 (defvar +earn-ratio+ 0.2)
 (defvar +price-variation-ratio+ 0.2)
 (defvar +price-max-variation+ 5)
+(defvar +tile-max-chickens+ 50)
 
 ;;; Utils
 (defun first (l)
@@ -167,7 +168,7 @@
     (let ((price (get-price :chicken)))
       (add-number-action (stringify "Buy chickens (" price "§)")
                          (lambda (n)
-                           (when (buy-chickens 1 n)
+                           (when (buy-chickens n)
                              (message "Bought " n " chickens at " (@ *city* name)
                                       " for " (* price n) "§")))
                          "#static-actions"))))
@@ -334,9 +335,9 @@
         (return false))
       t))
 
-(defun buy-chickens (price number)
+(defun buy-chickens (number)
   (if (and (enough-room-p number)
-           (pay (* price number)))
+           (pay (* (get-price :chicken) number)))
       (progn (inventory-add :chickens number)
              (display-infos))
       false))
@@ -357,6 +358,10 @@
       false))
 
 (defun put-chickens (number tile)
+  (when (> (+ (tile-chickens tile) number) +tile-max-chickens+)
+    (message "You can't put more than " +tile-max-chickens+
+             " chickens on the same field")
+    (return false))
   (if (remove-chickens number)
       (progn
         (tile-set-chickens tile (+ (tile-chickens tile) number))
