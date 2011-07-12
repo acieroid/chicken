@@ -645,7 +645,6 @@
   (draw-map *map*))
 
 (defun init-game ()
-  (message "Game started")
   (init-messages)
   (init-inventory)
   (init-prices)
@@ -657,7 +656,9 @@
   (init-cities)
   (clear-actions)
   (update-static-actions)
-  (redraw))
+  (redraw)
+  (message
+   "Game started, <a href=\"howto.html\">more info about this game</a> (fr)"))
 
 (defun init ()
   (setq *canvas* ($ "#canvas"))

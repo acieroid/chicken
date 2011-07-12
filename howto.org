@@ -1,3 +1,4 @@
+#+EMAIL:
 Chicken - Comment jouer et post-mortem
 
 Ce jeu, réalisé dans le cadre de la 10ème édition des [[http://www.games-creators.org/wiki/Novendiales][Novendiales]],
@@ -17,7 +18,9 @@ La carte est composée de trois types de cases:
   - Les *champs*: c'est ici que vous placerez les poules afin qu'elles
     produisent des œufs. La collecte des œufs se fait automatiquement
     et vous rapportera de l'argent à chaque tour. Un champ que vous
-    possédez sera encadré en /rouge/.
+    possédez sera encadré en /rouge/. Pour acheter un champ, placer
+    des poules sur un champ, etc., il faut d'abord le sélectionner en
+    cliquant dessus.
 * Les transports
   - Vous avez à votre disposition plusieurs transports, que vous
     pouvez acheter dans les villes quand ils y sont disponibles. Les
