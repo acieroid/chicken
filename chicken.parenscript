@@ -148,13 +148,13 @@
   ((@ ($ "#static-actions") html) "")
   (unless (= *city* *home*)
     (when (transport-available)
-      (let* ((transport (random-transport))
-            (price (get-price transport)))
+      (let ((transport (random-transport)))
         (add-action (stringify "Buy a " transport
-                                               " (" price "§)")
+                               " (" (get-price transport) "§)")
                     (lambda ()
-                      (when (pay price)
-                        (message "You just bought a " transport)
+                      (when (pay (get-price transport))
+                        (message "You just bought a " transport
+                                 " for " (get-price transport))
                         (inventory-add transport 1)
                         (setf *transport* transport)
                         (update-static-actions)
