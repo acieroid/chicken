@@ -35,12 +35,13 @@
     ("Jet" 300)
     ("Cargo plane" 500)))
 (defvar +tile-size+ 10)
-(defvar +initial-money+ 100)
+(defvar +initial-money+ 1000)
 (defvar +initial-chickens+ 0)
 (defvar +initial-transport+ (first (first +transports+)))
 (defvar +city-factor+ 0.005)
-(defvar +earn-ratio+ 0.1)
+(defvar +earn-ratio+ 0.2)
 (defvar +price-variation-ratio+ 0.2)
+(defvar +field-price+ 100)
 
 ;;; Utils
 (defun first (l)
@@ -264,12 +265,15 @@
       (let ((price (price-variation mean-price)))
         (setf (aref *prices* name) price))))
 
+(defun field-price ()
+  (get-price :field +field-price+))
+
 ;;; Transports
 (defun transport-size (transport)
   (assoc transport +transports+))
 
 (defun transport-price (transport)
-  (get-price transport (assoc transport +transports+)))
+  (get-price transport (* (assoc transport +transports+) 10)))
 
 (defun transport-available ()
   (if (and (not *transport-unavailable*)
@@ -404,13 +408,14 @@
     ((:grass-1 :grass-2 :grass-3 :grass-4 :grass-5 :mud-1 :mud-2 :mud-3)
      (when (= *city* *home*)
        (when (tile-owned-p tile)
-         (add-action "Sell at 10"
-                     (lambda ()
-                       (earn 10)
-                       (message "Sold field")
-                       (tile-set-owned tile false)
-                       (redraw)
-                       (clear-actions)))
+         (let ((price (field-price)))
+           (add-action (stringify "Sell (" price ")")
+                       (lambda ()
+                         (earn price)
+                         (message "Sold field for " price)
+                         (tile-set-owned tile false)
+                         (redraw)
+                         (clear-actions))))
          (add-number-action "Put chickens"
                             (lambda (n)
                               (when (put-chickens n tile)
@@ -423,10 +428,11 @@
                                 (message "Taken " n " chickens")
                                 (clear-actions)))))
        (when (can-buy-field map x y)
-         (add-action "Buy (costs 10)"
+         (let ((price (field-price))))
+         (add-action (stringify "Buy (" price ")")
                      (lambda ()
-                       (when (pay 10)
-                         (message "Buying field")
+                       (when (pay price)
+                         (message "Bought field for " price)
                          (tile-set-owned tile x y)
                          (redraw))
                        (clear-actions))))))
@@ -611,6 +617,7 @@
 (defun init-game ()
   (init-messages)
   (init-inventory)
+  (reinit-prices)
   (init-money)
   (init-turns)
   (init-chickens)
