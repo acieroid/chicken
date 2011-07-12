@@ -95,7 +95,7 @@
   ((@ ($ type) append)
    (stringify
     (ps-html ((:input :type "button" :id id :value name)))
-    "<br/>"))
+    (unless (= type "#inventory") "<br/>")))
   ((@ ($ (stringify "#" id)) click) fun))
 
 (defun add-number-action (id name fun &optional (type "#actions"))
@@ -104,7 +104,7 @@
      (stringify
       (ps-html ((:input :type "text" :id text-id :value 0)))
       (ps-html ((:input :type "button" :id id :value name)))
-      "<br/>"))
+      (unless (= type "#inventory") "<br/>")))
     ((@ ($ (stringify "#" id)) click)
      (lambda ()
        (let ((n (parse-int ((@ ($ (stringify "#" text-id)) val)))))
@@ -165,28 +165,56 @@
   (aref *inventory* type))
 
 (defun inventory-remove (type number
-                         &optional (error-message
-                                    (stringify "You don't have enough "
-                                               type " in your inventory")))
+                         &key (remove-p false)
+                         (error-message
+                          (stringify "You don't have enough "
+                                     type " in your inventory")))
   (if (or (undefined (inventory-get type))
           (> number (inventory-get type)))
        (progn
          (message error-message)
          false)
-       (decf (aref *inventory* type) number)))
+       (when (and (= (decf (aref *inventory* type) number) 0) remove-p)
+           ;; Don't keep a "0" if remove-p is true
+           (setf (aref *inventory* type) undefined))))
+
+(defun inventory-display-transport (transport)
+  ((@ ($ "#inventory") append) (stringify "<b>" transport ":</b> "
+                                          (inventory-get transport)))
+  (unless (= *transport* transport)
+    (add-action (stringify "use-" transport) "Use"
+                (lambda ()
+                  (setf *transport* transport)
+                  (message "You're now using your " transport)
+                  (display-infos))
+                "#inventory"))
+  (when (and (not (= *city* *home*))
+             (or (not (= *transport* transport))
+                 (and (= *transport* transport)
+                      (> (inventory-get transport) 1))))
+    (let ((price (transport-price transport)))
+      (add-number-action (stringify "sell-" transport)
+                         (stringify "Sell (" price ")")
+                         (lambda (n)
+                           (when (inventory-remove transport n :remove-p t)
+                             (earn (* n price))
+                             (message "You sold a " transport " for " price)
+                             (display-infos)))
+                         "#inventory")))
+  ((@ ($ "#inventory") append) "<br/>"))
 
 (defun display-inventory ()
   ((@ ($ "#inventory") html) "<h3>Inventory</h3>")
   (let ((l (list
             (stringify "<b>Money:</b> " (inventory-get :money))
             (stringify "<b>Chickens:</b> " (inventory-get :chickens)))))
-    (dolist (transport +transports+)
-      (when (defined (inventory-get (first transport)))
-        ((@ l push) (stringify "<b>" (first transport) ":</b> "
-                               (inventory-get (first transport))))))
     (mapcar (lambda (str)
               ((@ ($ "#inventory") append) (stringify str "<br/>")))
-            l)))
+            l))
+  (dolist (elem +transports+)
+    (let ((transport (first elem)))
+      (when (defined (inventory-get transport))
+        (inventory-display-transport transport)))))
 
 ;;; Money
 (defun pay (price)
@@ -225,7 +253,7 @@
   (first (random-element +transports+)))
 
 (defun init-transports ()
-  (inventory-add +initial-transport+)
+  (inventory-add +initial-transport+ 1)
   (setf *transport* +initial-transport+))
 
 ;;; Chickens
@@ -536,7 +564,8 @@
                                     (transport-size *transport*) " - "
                                     "Chickens placed: " *chickens-placed* " - "
                                     "Transport: " *transport* " - "
-                                    "Location: " (@ *city* name))))
+                                    "Location: " (@ *city* name)))
+  (display-inventory))
 
 (defun pre-init ()
   ((@ *canvas* click)
