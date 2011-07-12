@@ -102,7 +102,7 @@
     (reinit-prices)
     (setf *transport-unavailable* false)
     (earn gain)
-    (message "Starting turn " *turn* ", you earned " gain)
+    (message "Starting turn " *turn* ", you earned " gain "§")
     (update-static-actions)
     (display-infos)))
 
@@ -247,7 +247,7 @@
 (defun display-inventory ()
   ((@ ($ "#inventory") html) "<h3>Inventory</h3>")
   ((@ ($ "#inventory") append) (stringify "<b>Money:</b> "
-                                          (inventory-get :money) "<br/>"))
+                                          (inventory-get :money) "§<br/>"))
   (inventory-display-chickens)
   (dolist (elem +transports+)
     (let ((transport (first elem)))
@@ -655,6 +655,7 @@
   (init-map)
   (init-cities)
   (clear-actions)
+  (update-static-actions)
   (redraw))
 
 (defun init ()
