@@ -129,6 +129,7 @@
       (ps-html ((:input :type "text" :id text-id :value 0)))
       (ps-html ((:input :type "button" :id id :value name)))
       (unless (= type "#inventory") "<br/>")))
+    ((@ ($ (stringify "#" text-id)) attr) "size" "2")
     ((@ ($ (stringify "#" id)) click)
      (lambda ()
        (let ((n (parse-int ((@ ($ (stringify "#" text-id)) val)))))
@@ -203,7 +204,7 @@
 
 (defun inventory-display-transport (transport)
   ((@ ($ "#inventory") append) (stringify "<b>" transport ":</b> "
-                                          (inventory-get transport)))
+                                          (inventory-get transport) " "))
   (unless (= *transport* transport)
     (add-action "Use"
                 (lambda ()
@@ -231,10 +232,11 @@
 (defun inventory-display-chickens ()
   ((@ ($ "#inventory") append) (stringify "<b>Chickens:</b> "
                                           (inventory-get :chickens)
-                                          "/" (transport-size *transport*)))
+                                          "/" (transport-size *transport*)
+                                          " "))
   (when (> (inventory-get :chickens) 0)
     (let ((price (get-price :chicken)))
-      (add-number-action (stringify "Sell chickens (" price ")")
+      (add-number-action (stringify "Sell (" price ")")
                          (lambda (n)
                            (when (sell-chickens 1 n)
                              (message "Sold " n " chickens at " (@ *city* name)
