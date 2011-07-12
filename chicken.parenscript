@@ -10,7 +10,9 @@
 (defvar *home*)
 (defvar *chickens-placed*)
 (defvar *transport*)
+(defvar *transport-unavailable*)
 (defvar *inventory*)
+(defvar *pricse*)
 
 (defvar +colors+
   '((:grass-1 "#180")
@@ -37,7 +39,7 @@
 (defvar +initial-chickens+ 0)
 (defvar +initial-transport+ (first (first +transports+)))
 (defvar +city-factor+ 0.005)
-(defvar +earn-ratio+ 0.3)
+(defvar +earn-ratio+ 0.1)
 (defvar +price-variation-ratio+ 0.2)
 
 ;;; Utils
@@ -84,6 +86,8 @@
 (defun next-turn ()
   (let ((gain (floor (* *chickens-placed* +earn-ratio+))))
     (setf *turn* (+ *turn* 1))
+    (reinit-prices)
+    (setf *transport-unavailable* false)
     (earn gain)
     (message "Starting turn " *turn* ", you earned " gain)
     (update-static-actions)
@@ -204,10 +208,13 @@
     (let ((price (transport-price transport)))
       (add-number-action (stringify "Sell (" price ")")
                          (lambda (n)
-                           (when (inventory-remove transport n :remove-p t)
-                             (earn (* n price))
-                             (message "You sold a " transport " for " price)
-                             (display-infos)))
+                           (if (and (= *transport* transport)
+                                    (>= n (inventory-get transport)))
+                               (message "You still need one " transport)
+                               (when (inventory-remove transport n :remove-p t)
+                                 (earn (* n price))
+                                 (message "You sold a " transport " for " price)
+                                 (display-infos))))
                          "#inventory")))
   ((@ ($ "#inventory") append) "<br/>"))
 
@@ -247,21 +254,35 @@
 (defun init-money ()
   (inventory-add :money +initial-money+))
 
+;;; Prices
+(defun reinit-prices ()
+  (setf *prices* (make-array)))
+
+(defun get-price (name mean-price)
+  (if (defined (aref *prices* name))
+      (aref *prices* name)
+      (let ((price (price-variation mean-price)))
+        (setf (aref *prices* name) price))))
+
 ;;; Transports
 (defun transport-size (transport)
   (assoc transport +transports+))
 
 (defun transport-price (transport)
-  (price-variation (assoc transport +transports+)))
+  (get-price transport (assoc transport +transports+)))
 
 (defun transport-available ()
-  (= (random 2) 1))
+  (if (and (not *transport-unavailable*)
+           (= (random 2) 1))
+      (setf *transport-unavailable* t)
+      false))
 
 (defun random-transport ()
   (first (random-element +transports+)))
 
 (defun init-transports ()
   (inventory-add +initial-transport+ 1)
+  (setf *transport-unavailable* false)
   (setf *transport* +initial-transport+))
 
 ;;; Chickens
