@@ -234,7 +234,7 @@
     (let ((price (get-price :chicken)))
       (add-number-action (stringify "Sell (" price "§)")
                          (lambda (n)
-                           (when (sell-chickens 1 n)
+                           (when (sell-chickens n)
                              (message "Sold " n " chickens at " (@ *city* name)
                                       " for " (* price n) "§")))
                          "#inventory")))
@@ -344,10 +344,10 @@
         false)
       t))
 
-(defun sell-chickens (price number)
+(defun sell-chickens (number)
   (if (remove-chickens number)
       (progn
-        (earn (* price number))
+        (earn (* (get-price :chicken) number))
         (inventory-remove :chickens number)
         (display-infos))
       false))
