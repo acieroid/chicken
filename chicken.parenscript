@@ -154,7 +154,7 @@
                     (lambda ()
                       (when (pay (get-price transport))
                         (message "You just bought a " transport
-                                 " for " (get-price transport))
+                                 " for " (get-price transport) "&")
                         (inventory-add transport 1)
                         (setf *transport* transport)
                         (update-static-actions)
